@@ -1,0 +1,375 @@
+body {
+    font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif;
+}
+html {
+  overflow-y: scroll;
+  z-index: -5;
+}
+.bold { font-weight: bold; }
+.song { 
+	color: DARKGOLDENROD; 
+
+}
+.buzz { color: DARKSLATEBLUE; }
+
+.container {
+	max-width: 900px;
+	margin: 0 auto;
+}
+.playlist-container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.topnav {
+padding-top: 50px;
+}
+.topnav-title {
+font-weight: bold;
+font-family: Helvetica;
+z-index: -1;
+ display : flex;
+  justify-content: center;
+      position: absolute;
+    left: 0;
+    right: 0;
+    margin: auto;
+    top: 5px;
+        font-size: 55px;
+
+}
+.topnav-right {
+  float: right;
+	margin: 50px;
+}
+
+
+.venue-list {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-around;
+}
+
+.button-disabled {
+  pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.65;
+  filter: alpha(opacity=65);
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+
+.space-list-items {
+	margin-bottom: 15px;
+}
+
+.card:hover {
+    background-color: lemonchiffon;
+    cursor: pointer;
+}
+
+ul {
+	padding: 0;
+}
+
+li {
+	list-style-type: none;
+}
+
+a { 
+	text-decoration: none;
+	color: #d0021b;
+ }
+
+.error { 
+	text-decoration: none;
+	color: red;
+    font-weight: 620;
+
+ }
+ .error-placeholder{ 
+ 	visibility: hidden;
+ }
+
+
+
+
+.display-block {
+  display: block;
+}
+
+.display-none {
+  display: none;
+}
+
+
+.venue-name {
+	color: #d0021b;
+}
+
+.card-list span {
+    font-weight: 620;
+    color: inherit;
+}
+
+.card-list {
+    margin: 10px 0;
+    font-size: 20px;
+}
+.card-list li {
+    display: flex;
+    align-items: center;
+    margin: 1px;
+}
+.avatar {
+    width: 150px;
+    height: 150px;
+    border-radius: 15px;
+    margin: 0 auto;
+    display: block;
+}
+
+.loading-text {
+  text-align: center;
+  font-size: 50px;
+}
+
+.astext {
+    background:none;
+    border:none;
+    margin:0;
+    padding:0;
+    cursor: pointer;
+    margin-top: 20px;
+    font-size: 20px;
+	color: #d0021b;    
+
+}
+.astext:focus {
+  outline: none;
+}
+
+
+.card {
+    margin: 10px 0;
+    width: 250px;
+    padding: 20px;
+}
+
+.card-list img {
+    margin-right: 10px;
+    margin-left: 30px;
+}
+
+.card-list svg {
+    margin-right: 10px;
+    margin-left: 30px;
+
+}
+
+.bg-light {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 3px;
+}
+
+.center-text {
+    text-align: center;
+}
+
+.header-lg {
+    font-size: 35px;
+    font-weight: 300;
+    margin: 20px;
+}
+
+.avatar-info {
+	position: relative;
+	 display: flex;
+}
+
+.avatar-icon {
+	color: rgb(255, 191, 116);
+}
+
+.stars-icon {
+color: rgb(255, 215, 0);
+}
+.forks-icon {
+	color: rgb(129, 195, 245);
+}
+.issues-icon {
+	color: rgb(241, 138, 147);
+}
+
+.venue-create-form {
+	text-align:center;
+}
+.venue-create-button {
+  background-color: DARKGOLDENROD;
+
+  color: black;
+  font-size: 16px;
+  padding: 16px 30px;
+  border: none;
+  margin-top: 15px;
+  cursor: pointer;
+  border-radius: 10px;
+  text-align: center;
+}
+.venue-create-button:focus {
+	outline: none;
+}
+
+.venue-create-modal:focus {
+  outline: none;
+}
+
+.venue-create-input {
+	padding: 5px;
+	  margin: 5px;
+
+}
+.venue-create-modal {
+  background-color: CORNSILK;
+  margin: 10% auto; 
+  padding: 50px;
+  padding-top: 25px;
+  padding-bottom: 35px;
+
+  border: 1px solid MAROON;
+  width: 200px; 
+    border-radius: 10px;
+
+}
+
+.playlist-header {
+}
+.playlist-title {
+  text-align: center;
+  padding-top: 20px;
+  margin: 0px;
+}
+
+.playlist-propose {
+	overflow: hidden;
+}
+.playlist-propose-button {
+position: relative;
+float: left;
+margin:0;
+padding:0;
+}
+
+.playlist {
+font-family: Verdana, Arial, sans-serif;
+}
+        .album-name {
+            color: DARKSLATEGRAY;
+        }
+        .artist-name {
+        	color: black;
+        }
+        .tracks {
+            width: 100%;
+            max-width: 700px;
+            display: table;
+            border-collapse: collapse;
+        }
+        .track {
+            overflow: hidden;
+            display: table-row;
+            width: 100%;
+            z-index: 99999;
+        }
+        .track img {
+            display: block;
+            height: 80px;
+            width: 80px;
+
+        }
+        .track-listing {
+        	height: 90px;
+        }
+        .track-suggest:hover {
+            background-color: lemonchiffon;
+        }
+        .track-info {
+        	height: 80px;
+            position: relative;
+            vertical-align: top;
+            font-weight: 200;
+            width: 100%;
+        }
+        .album-art,
+        .track-place,
+        .track-info {
+            display: table-cell;
+            border-top: 5px solid white;
+        }
+        .track-place {
+        		font-family: -apple-system,
+		BlinkMacSystemFont,
+		Segoe UI,
+		Oxygen-Sans,
+		Ubuntu,
+		Cantarell,
+		Helvetica Neue, 
+		sans-serif;
+		color: gray;
+		padding-right: 10px;
+	font-size: 20px;
+	margin: 15px;
+
+text-align: center;
+vertical-align: middle;	        	
+        }
+        .artist,
+        .name {
+        	top: 5px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .name {
+            font-size: 15px;
+            font-weight: 500;
+            color: maroon;
+        }
+        .artist {
+            top: 25px;
+        }
+        .artist,
+        .duration {
+            font-size: 12px;
+            color: #31404d;
+        }
+        .name,
+        .artist,
+        .duration {
+            position: absolute;
+            left: 10px;
+        }
+        .duration {
+            top: 50px;
+            font-weight: 300;
+        }
+
+
+.upvote-button {
+
+}
+
+.downvote-button {
+
+}
+
+.vote-buttons {
+	margin-top: 40px;
+}
+
+.vote-score {
+	position: relative;
+	top: 2px;
+	margin-top: 20px;
+	padding: 15px;
+	font-size: 20px;
+}
