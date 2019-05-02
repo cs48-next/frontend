@@ -5,6 +5,16 @@ html {
   overflow-y: scroll;
   z-index: -5;
 }
+
+.track-suggest-frame {
+    overflow-y: auto;
+   max-height: 60vh;
+}
+.track-suggest-frame::-webkit-scrollbar { /* WebKit */
+    width: 0;
+    height: 0;
+}
+
 .bold { font-weight: bold; }
 .song { 
 	color: DARKGOLDENROD; 
@@ -63,10 +73,6 @@ z-index: -1;
 	margin-bottom: 15px;
 }
 
-.card:hover {
-    background-color: lemonchiffon;
-    cursor: pointer;
-}
 
 ul {
 	padding: 0;
@@ -121,10 +127,10 @@ a {
     align-items: center;
     margin: 1px;
 }
-.avatar {
+.now-playing-album-art {
     width: 150px;
     height: 150px;
-    border-radius: 15px;
+    border-radius: 10px;
     margin: 0 auto;
     display: block;
 }
@@ -150,11 +156,18 @@ a {
 }
 
 
-.card {
+.venue-card {
     margin: 10px 0;
     width: 250px;
-    padding: 20px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 3px;    
 }
+.venue-card:hover {
+    background-color: lemonchiffon;
+    cursor: pointer;
+}
+
 
 .card-list img {
     margin-right: 10px;
@@ -167,11 +180,6 @@ a {
 
 }
 
-.bg-light {
-    background: rgba(0, 0, 0, 0.08);
-    border-radius: 3px;
-}
-
 .center-text {
     text-align: center;
 }
@@ -182,7 +190,7 @@ a {
     margin: 20px;
 }
 
-.avatar-info {
+.venue-grid-info {
 	position: relative;
 	 display: flex;
 }
@@ -205,7 +213,7 @@ color: rgb(255, 215, 0);
 	text-align:center;
 }
 .venue-create-button {
-  background-color: DARKGOLDENROD;
+  background-color: LIGHTSTEELBLUE;
 
   color: black;
   font-size: 16px;
@@ -213,7 +221,7 @@ color: rgb(255, 215, 0);
   border: none;
   margin-top: 15px;
   cursor: pointer;
-  border-radius: 10px;
+  border-radius: 4px;
   text-align: center;
 }
 .venue-create-button:focus {
@@ -224,21 +232,25 @@ color: rgb(255, 215, 0);
   outline: none;
 }
 
+.song-propose-input {
+    padding: 10px;
+}
+
 .venue-create-input {
 	padding: 5px;
 	  margin: 5px;
 
 }
 .venue-create-modal {
-  background-color: CORNSILK;
+  background-color: LAVENDER;
   margin: 10% auto; 
   padding: 50px;
   padding-top: 25px;
   padding-bottom: 35px;
 
-  border: 1px solid MAROON;
-  width: 200px; 
-    border-radius: 10px;
+  border: 1px solid BLACK;
+  width: 250px; 
+  border-radius: 10px;
 
 }
 
@@ -259,10 +271,40 @@ float: left;
 margin:0;
 padding:0;
 }
+        .track-suggest{
+          padding-top: 15px;
+          padding-bottom: 10px;
+        }
 
-.playlist {
+        .track-suggest-name {
+                      font-size: 18px;
+            font-weight: 550;
+            color: maroon;
+            padding-bottom:0px;
+        }
+        .track-suggest-album {
+            color: DARKSLATEGRAY;
+            padding-bottom:5px;
+
+        }
+        .track-suggest-artist {
+          color: black;
+                      font-size: 19px;
+
+            padding:5px;
+
+        }
+        .track-suggest:hover {
+            background-color: PEACHPUFF;
+            cursor: default;
+        }        
+
+.playlist, .track-suggest-frame {
 font-family: Verdana, Arial, sans-serif;
 }
+
+
+
         .album-name {
             color: DARKSLATEGRAY;
         }
@@ -290,9 +332,7 @@ font-family: Verdana, Arial, sans-serif;
         .track-listing {
         	height: 90px;
         }
-        .track-suggest:hover {
-            background-color: lemonchiffon;
-        }
+
         .track-info {
         	height: 80px;
             position: relative;

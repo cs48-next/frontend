@@ -1,8 +1,9 @@
 import React, { Component } from "react";
 import Modal from "react-modal";
 import * as moment from "moment";
+import Cookies from 'universal-cookie';
+import uuid from "uuid";
 
-import PropTypes from "prop-types";
 import "./App.css";
 
 import {
@@ -12,7 +13,8 @@ import {
   getTracksMeta,
   proposeTrack,
   upvoteTrack,
-  downvoteTrack
+  downvoteTrack,
+  queryTracks
 } from "./api";
 import { geolocated } from "react-geolocated";
 
@@ -24,14 +26,14 @@ function VenueGrid({ venues, onVenueSelect }) {
           return (
             <div
               onClick={() => onVenueSelect(venue_id)}
-              className="card bg-light"
+              className="venue-card"
               key={venue_id}
             >
               <h4 className="header-lg center-text">
                 {Number(distance).toFixed(1)} mi.
               </h4>
               <img
-                className="avatar"
+                className="now-playing-album-art"
                 src="https://api.napster.com/imageserver/v2/albums/alb.8762246/images/170x170.jpg/"
                 alt=""
               />
@@ -42,7 +44,7 @@ function VenueGrid({ venues, onVenueSelect }) {
               <ul className="card-list">
                 <li key={venue_id + "-host"}>
                   <div>
-                    <div className="avatar-info">
+                    <div className="venue-grid-info">
                       <img
                         className="avatar-icon"
                         src="img/user-avatar.svg"
@@ -75,17 +77,13 @@ function VenueGrid({ venues, onVenueSelect }) {
     </ul>
   );
 }
-VenueGrid.propTypes = {
-  venues: PropTypes.array.isRequired,
-  onVenueSelect: PropTypes.func.isRequired
-};
 
 function VenueInfo({
+  userId,
   venue,
   venueTrackInfo,
   onProposeOpen,
   onProposeClose,
-  onTrackPropose,
   onTrackUpvote,
   onTrackDownvote,
   onTrackVoteskip
@@ -129,6 +127,13 @@ function VenueInfo({
             var ordinal = index + 1;
             var trackId = track.track_id;
             var trackInfo = venueTrackInfo[trackId];
+
+            var userVote = track.votes.find(vote => vote.user_id === userId);
+            var upvoteExists = userVote != null && userVote.upvote;
+            var downvoteExists = userVote != null && userVote.downvote;
+
+            console.log(userVote);
+
             if (trackInfo != null) {
               var score = track.votes
                 .map(vote => {
@@ -170,18 +175,19 @@ function VenueInfo({
                       </div>
 
                       <div className="vote-buttons">
-                        <button
-                          className="upvote-button"
-                          onClick={() => onTrackUpvote(trackId)}
-                        >
-                          +
-                        </button>
-                        <span className="vote-score">{score}</span>
+
                         <button
                           className="downvote-button"
                           onClick={() => onTrackDownvote(trackId)}
                         >
                           -
+                        </button>                      
+                        <span className="vote-score">{score}</span>
+                        <button
+                          className="upvote-button"
+                          onClick={() => onTrackUpvote(trackId)}
+                        >
+                          +
                         </button>
                       </div>
                     </div>
@@ -199,24 +205,25 @@ function VenueInfo({
     </div>
   );
 }
-VenueInfo.propTypes = {
-  venue: PropTypes.object.isRequired,
-  venueTrackInfo: PropTypes.object.isRequired,
-  onProposeOpen: PropTypes.func.isRequired,
-  onProposeClose: PropTypes.func.isRequired,
-  onTrackPropose: PropTypes.func.isRequired,
-  onTrackUpvote: PropTypes.func.isRequired,
-  onTrackDownvote: PropTypes.func.isRequired,
-  onTrackVoteskip: PropTypes.func.isRequired
-};
 
 const StateVenueGrid = "venue_grid";
 const StateVenueInfo = "venue_info";
 
+const cookies = new Cookies();
+
 class App extends Component {
   constructor(props) {
     super(props);
+
+    if (cookies.get('user_id') == null) {
+      console.log("No userId found, setting");
+      cookies.set('user_id', uuid.v4(), { path: '/' });
+    }
+    var userId = cookies.get('user_id');
+
     this.state = {
+      userId: userId,
+
       venues: null,
       venue: null,
       venueTrackInfo: null,
@@ -226,8 +233,9 @@ class App extends Component {
       creationError: null,
 
       proposingTrack: false,
-      proposalInProgress: false,
       proposalError: null,
+
+      trackQueryResults: null,
 
       phase: StateVenueGrid
     };
@@ -247,6 +255,7 @@ class App extends Component {
     this.trackDownvote = this.trackDownvote.bind(this);
 
     this.trackVoteskip = this.trackVoteskip.bind(this);
+    this.trackQueryInputChange = this.trackQueryInputChange.bind(this);
   }
 
   componentDidMount() {
@@ -290,12 +299,14 @@ class App extends Component {
     event.preventDefault();
     var venueName = this.inputVenueName.value;
     var djName = this.inputDjName.value;
+    var djId = this.state.userId;
 
     this.setState({ creationInProgress: true });
 
     createVenue(
       venueName,
       djName,
+      djId,
       this.props.coords.latitude,
       this.props.coords.longitude
     )
@@ -316,24 +327,18 @@ class App extends Component {
   openPropose() {
     this.setState({
       proposingTrack: true,
-      proposalInProgress: false,
-      proposalError: null
+      proposalError: null,
+      trackQueryResults: null
     });
   }
   closePropose() {
     this.setState({
       proposingTrack: false,
-      proposalInProgress: false,
-      proposalError: null
+      proposalError: null,
+      trackQueryResults: null
     });
   }
-  trackPropose(event) {
-    event.preventDefault();
-    var venueId = this.state.venue.id;
-    var trackId = this.inputTrackId.value;
-
-    this.setState({ proposalInProgress: true });
-
+  trackPropose(venueId, trackId) {
     proposeTrack(venueId, trackId)
       .then(track => {
         this.setState({ proposingTrack: false, proposalError: null });
@@ -346,39 +351,49 @@ class App extends Component {
         this.setState({ proposalError: "Bad input!" });
       })
       .then(() => {
-        this.setState({ proposalInProgress: false });
       });
   }
+  trackQueryInputChange(event) {
+    var trackQuery = this.trackQuery.value;
+
+    if (this.queryDelayTask != null) {
+      clearTimeout(this.queryDelayTask);
+    }
+
+    this.queryDelayTask = setTimeout(() => this.runTrackQuery(trackQuery), 250);
+  }
+
+  runTrackQuery(query) {
+    queryTracks(query).then(response => {
+      var tracks = response.search.data.tracks;
+      this.setState({trackQueryResults: tracks});    
+    });
+  }
+
   loadVenues() {
-    this.setState(() => {
-      return {
+    this.setState({
         venue: null,
         phase: StateVenueGrid
-      };
-    });
+      });
 
     listVenues(this.props.coords.latitude, this.props.coords.longitude).then(
-      venues => {
-        this.setState(() => {
-          return {
-            venues: venues,
+      response => {
+        this.setState({
+            venues: response.venues,
             venue: null,
             phase: StateVenueGrid
-          };
-        });
+          });
       }
     );
   }
 
   venueSelected(venue) {
-    this.setState(() => {
-      return {
+    this.setState({
         venues: null,
         creatingVenue: false,
         proposingTrack: false,
         phase: StateVenueInfo
-      };
-    });
+      });
 
     fetchVenue(venue).then(venue => {
       var playlist = venue.playlist;
@@ -394,23 +409,22 @@ class App extends Component {
           trackInfo[trackObj.id] = trackObj;
         });
 
-        this.setState(() => {
-          return {
+        this.setState({
             venues: null,
             venue: venue,
             venueTrackInfo: trackInfo,
             creatingVenue: false,
             proposingTrack: false,
             phase: StateVenueInfo
-          };
-        });
+          });
       });
     });
   }
 
   trackUpvote(trackId) {
     var venueId = this.state.venue.id;
-    upvoteTrack(venueId, trackId).then(vote => {
+    var userId = this.state.userId;
+    upvoteTrack(venueId, trackId, userId).then(vote => {
       if (this.state.venue.id === venueId) {
         this.venueSelected(venueId);
       }
@@ -419,7 +433,8 @@ class App extends Component {
 
   trackDownvote(trackId) {
     var venueId = this.state.venue.id;
-    downvoteTrack(venueId, trackId).then(vote => {
+    var userId = this.state.userId;
+    downvoteTrack(venueId, trackId, userId).then(vote => {
       if (this.state.venue.id === venueId) {
         this.venueSelected(venueId);
       }
@@ -432,6 +447,7 @@ class App extends Component {
 
   render() {
     const {
+      userId,
       venues,
       venue,
       venueTrackInfo,
@@ -441,8 +457,9 @@ class App extends Component {
       creationError,
 
       proposingTrack,
-      proposalInProgress,
       proposalError,
+
+      trackQueryResults,
 
       phase
     } = this.state;
@@ -462,43 +479,60 @@ class App extends Component {
       <div>
         <div className="container">
           <Modal
+            autoFocus={false}
             isOpen={proposingTrack}
             onRequestClose={this.closePropose}
             className="venue-create-modal center-text"
             contentLabel="Propose song"
             shouldReturnFocusAfterClose={false}
           >
-            <h2 className="center-text">Track</h2>
-            <form
-              autoComplete="off"
-              className="venue-create-form"
-              onSubmit={this.trackPropose}
-            >
+            <h2 className="center-text">Propose Song</h2>
+
               <input
+                autoFocus={true}
+                id="song-search"
                 type="text"
-                className="venue-create-input"
-                ref={input => (this.inputTrackId = input)}
-                id="venueName"
-                placeholder="Track ID sorry :( FOR NOW!"
+                autoComplete="off"
+                className="song-propose-input"
+                onChange={this.trackQueryInputChange}
+                ref={input => (this.trackQuery = input)}
+                placeholder="Song name"
               />
 
-              {proposalInProgress ? (
-                <button className="venue-create-button button-disabled">
-                  Loading
-                </button>
-              ) : (
-                <button className="venue-create-button">Propose</button>
-              )}
-            </form>
 
-            {proposalError != null ? (
+            <div className="track-suggest-frame">
+                        {proposalError != null ? (
               <span className="error">{proposalError}</span>
             ) : (
               <span className="error-placeholder">_</span>
             )}
+
+            {trackQueryResults != null ? (
+              <ul>
+                {trackQueryResults.map(track => {
+                  return (
+                    <li key={'track-suggest-' + track.id} onClick={()=>{this.trackPropose(venue.id, track.id)}}>
+                     <div className="track-suggest">
+                        <div className="track-suggest-album-art"><img alt="" src={"https://api.napster.com/imageserver/v2/albums/" + track.albumId + "/images/170x170.jpg"}/></div>
+
+                        <div className="track-suggest-info">
+                          <div className="track-suggest-name">{track.name}</div>
+                          <div className="track-suggest-artist">{track.artistName}</div>
+                          <div className="track-suggest-album">{track.albumName}</div>
+                          <div className="track-suggest-duration">{track.playbackSeconds === 0 ? "?:??" : moment.utc(track.playbackSeconds * 1000).format("mm:ss")}</div>
+                        </div>
+                     </div> 
+                    </li>
+                    );
+                })}
+              </ul>
+            ) : (null)}
+            </div>
+
           </Modal>
 
           <Modal
+            autoFocus={false}          
             isOpen={creatingVenue}
             onRequestClose={this.closeCreate}
             className="venue-create-modal center-text"
@@ -512,6 +546,7 @@ class App extends Component {
               onSubmit={this.venueCreate}
             >
               <input
+                autoFocus={true}              
                 type="text"
                 className="venue-create-input"
                 ref={input => (this.inputVenueName = input)}
@@ -572,11 +607,11 @@ class App extends Component {
                   <h2 className="loading-text">Loading venue...</h2>
                 ) : (
                   <VenueInfo
+                    userId={userId}                  
                     venue={venue}
                     venueTrackInfo={venueTrackInfo}
                     onProposeOpen={this.openPropose}
                     onProposeClose={this.closePropose}
-                    onTrackPropose={this.trackPropose}
                     onTrackUpvote={this.trackUpvote}
                     onTrackDownvote={this.trackDownvote}
                     onTrackVoteskip={this.trackVoteskip}
