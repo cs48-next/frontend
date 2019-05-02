@@ -303,8 +303,6 @@ padding:0;
 font-family: Verdana, Arial, sans-serif;
 }
 
-
-
         .album-name {
             color: DARKSLATEGRAY;
         }
@@ -325,14 +323,18 @@ font-family: Verdana, Arial, sans-serif;
         }
         .track img {
             display: block;
-            height: 80px;
-            width: 80px;
+            height: 90px;
+            width: 90px;
 
         }
         .track-listing {
-        	height: 90px;
+        	height: 105px;
         }
 
+.vote-buttons {
+  margin-left: 35px;
+  margin-top: 50px;
+}
         .track-info {
         	height: 80px;
             position: relative;
@@ -356,8 +358,8 @@ font-family: Verdana, Arial, sans-serif;
 		Helvetica Neue, 
 		sans-serif;
 		color: gray;
-		padding-right: 10px;
-	font-size: 20px;
+		padding-right: 5px;
+	font-size: 25px;
 	margin: 15px;
 
 text-align: center;
@@ -370,12 +372,12 @@ vertical-align: middle;
             white-space: nowrap;
         }
         .name {
-            font-size: 15px;
+            font-size: 17px;
             font-weight: 500;
             color: maroon;
         }
         .artist {
-            top: 25px;
+            top: 30px;
         }
         .artist,
         .duration {
@@ -389,27 +391,30 @@ vertical-align: middle;
             left: 10px;
         }
         .duration {
-            top: 50px;
+            top: 60px;
             font-weight: 300;
         }
 
-
-.upvote-button {
-
+.upvote-button,
+ .downvote-button {
+  padding: 5px 15px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
 }
 
-.downvote-button {
-
-}
-
-.vote-buttons {
-	margin-top: 40px;
+.upvote-button:focus,
+.downvote-button:focus {
+  outline: none;
 }
 
 .vote-score {
 	position: relative;
+  width: 20px;
 	top: 2px;
-	margin-top: 20px;
+	margin-top: 200px;
 	padding: 15px;
 	font-size: 20px;
+  font-weight: 510;
 }

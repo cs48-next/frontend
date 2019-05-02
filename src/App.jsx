@@ -4,6 +4,9 @@ import * as moment from "moment";
 import Cookies from 'universal-cookie';
 import uuid from "uuid";
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faThumbsUp, faThumbsDown } from '@fortawesome/free-solid-svg-icons'
+
 import "./App.css";
 
 import {
@@ -181,7 +184,9 @@ function VenueInfo({
                           onClick={() => onTrackDownvote(trackId)}
                         >
                           -
-                        </button>                      
+                        </button>              
+                        <FontAwesomeIcon icon={faThumbsDown} />
+                        <FontAwesomeIcon icon={faThumbsUp} />
                         <span className="vote-score">{score}</span>
                         <button
                           className="upvote-button"
@@ -259,6 +264,7 @@ class App extends Component {
   }
 
   componentDidMount() {
+    console.log('mount');
     Modal.setAppElement("body");
     if (
       this.state.phase === StateVenueGrid &&
@@ -269,6 +275,8 @@ class App extends Component {
     }
   }
   componentDidUpdate(prevProps) {
+    console.log(prevProps);
+    console.log(this.props);
     if (
       this.state.phase === StateVenueGrid &&
       this.state.venues == null &&
