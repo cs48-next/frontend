@@ -1,17 +1,26 @@
 import axios from 'axios';
 
 const HOST = `https://api.song.buzz`;
-const NAPSTER_HOST = `https://api.napster.com/v2.2`;
+const NAPSTER_HOST = `https://api.napster.com`;
 
 const NAPSTER_API_KEY = "ZDFhMjNjNWItZjA4OC00NjJhLWFlYWQtYzE2MmUyZDUxOTBi";
 
 export function getTracksMeta(tracks) {
-	return axios.get(NAPSTER_HOST + `/tracks/${tracks.join(",")}`, { headers: { apiKey : NAPSTER_API_KEY}})
+	return axios.get(NAPSTER_HOST + `/v2.2/tracks/${tracks.join(",")}`, { headers: { apiKey : NAPSTER_API_KEY}})
 	.then((response) => response.data)
 }
 
 export function queryTracks(query) {
-	return axios.get(NAPSTER_HOST + `/search?query=${query}&isStreamableOnly=true&apikey=${NAPSTER_API_KEY}&type=track`)
+	return axios.get(NAPSTER_HOST + `/v2.2/search?query=${query}&isStreamableOnly=true&apikey=${NAPSTER_API_KEY}&type=track`)
+	.then((response) => response.data)
+}
+
+export function auth(username, password, apiKey, apiSecret) {
+	return axios.post(NAPSTER_HOST + `/oauth/token`, {
+		username: username,
+		password: password,
+		grant_type: 'password'
+	}, { headers: {Authorization: 'Basic ' + btoa(apiKey + ':' + apiSecret)}})
 	.then((response) => response.data)
 }
 

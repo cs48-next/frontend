@@ -1,11 +1,11 @@
-import React, { Component } from "react";
+import React, { Component, useEffect } from "react";
 import Modal from "react-modal";
 import * as moment from "moment";
 import Cookies from 'universal-cookie';
 import uuid from "uuid";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faThumbsUp, faThumbsDown } from '@fortawesome/free-solid-svg-icons'
+import { faThumbsUp, faThumbsDown } from '@fortawesome/free-regular-svg-icons'
 
 import "./App.css";
 
@@ -17,7 +17,9 @@ import {
   proposeTrack,
   upvoteTrack,
   downvoteTrack,
-  queryTracks
+  deleteVote,
+  queryTracks,
+  auth
 } from "./api";
 import { geolocated } from "react-geolocated";
 
@@ -89,8 +91,41 @@ function VenueInfo({
   onProposeClose,
   onTrackUpvote,
   onTrackDownvote,
+  onTrackDeleteVote,
   onTrackVoteskip
 }) {
+
+  useEffect(() => {
+    if (venue.host_id === userId) {
+      console.log('This is your venue!');
+      var API_KEY = 'ZDFhMjNjNWItZjA4OC00NjJhLWFlYWQtYzE2MmUyZDUxOTBi';
+      var API_SECRET = 'YjdiZWIzMjAtMjY0Yy00NDFmLTkzZWEtZTk4ZjBjMmU4NzQ1';
+      var ACCESS_KEY = 'me@keremc.com';
+      var ACCESS_SECRET = 'kopekbalik';      
+
+      window.Napster.init({
+        consumerKey: API_KEY,
+        isHTML5Compatible: true,
+        version: 'v2.2',
+        player: 'player-frame'
+      });
+      window.Napster.player.on('ready', function (e) {
+        console.log('initialized');
+        auth(ACCESS_KEY, ACCESS_SECRET, API_KEY, API_SECRET).then(response => {
+          console.log(response);
+        }).catch(error => {
+          console.log(error.response);
+        });
+      });
+      window.Napster.player.on('error', console.log);
+
+      // do Napster.init
+      // 
+    } else {
+      console.log('This is not your venue!');
+    }
+  }, [venue, userId]);
+
   return (
     <div className="venue-info center-text">
       <div>
@@ -133,9 +168,7 @@ function VenueInfo({
 
             var userVote = track.votes.find(vote => vote.user_id === userId);
             var upvoteExists = userVote != null && userVote.upvote;
-            var downvoteExists = userVote != null && userVote.downvote;
-
-            console.log(userVote);
+            var downvoteExists = userVote != null && !userVote.upvote;
 
             if (trackInfo != null) {
               var score = track.votes
@@ -178,22 +211,12 @@ function VenueInfo({
                       </div>
 
                       <div className="vote-buttons">
+               
+                        <FontAwesomeIcon className={"downvote-button" + (downvoteExists ? " downvote-selected" : "")} icon={faThumbsDown} onClick={() => downvoteExists ? onTrackDeleteVote(trackId) : onTrackDownvote(trackId) }/>
+                        <div className="vote-score">{score}</div>
 
-                        <button
-                          className="downvote-button"
-                          onClick={() => onTrackDownvote(trackId)}
-                        >
-                          -
-                        </button>              
-                        <FontAwesomeIcon icon={faThumbsDown} />
-                        <FontAwesomeIcon icon={faThumbsUp} />
-                        <span className="vote-score">{score}</span>
-                        <button
-                          className="upvote-button"
-                          onClick={() => onTrackUpvote(trackId)}
-                        >
-                          +
-                        </button>
+                        <FontAwesomeIcon className={"upvote-button" + (upvoteExists ? " upvote-selected" : "")} icon={faThumbsUp} onClick={() => upvoteExists ? onTrackDeleteVote(trackId) : onTrackUpvote(trackId)} />
+
                       </div>
                     </div>
                   </div>
@@ -258,13 +281,13 @@ class App extends Component {
 
     this.trackUpvote = this.trackUpvote.bind(this);
     this.trackDownvote = this.trackDownvote.bind(this);
+    this.trackDeleteVote = this.trackDeleteVote.bind(this);
 
     this.trackVoteskip = this.trackVoteskip.bind(this);
     this.trackQueryInputChange = this.trackQueryInputChange.bind(this);
   }
 
   componentDidMount() {
-    console.log('mount');
     Modal.setAppElement("body");
     if (
       this.state.phase === StateVenueGrid &&
@@ -275,8 +298,6 @@ class App extends Component {
     }
   }
   componentDidUpdate(prevProps) {
-    console.log(prevProps);
-    console.log(this.props);
     if (
       this.state.phase === StateVenueGrid &&
       this.state.venues == null &&
@@ -375,6 +396,8 @@ class App extends Component {
     queryTracks(query).then(response => {
       var tracks = response.search.data.tracks;
       this.setState({trackQueryResults: tracks});    
+    }).catch(error => {
+      console.log(error.response);
     });
   }
 
@@ -425,6 +448,8 @@ class App extends Component {
             proposingTrack: false,
             phase: StateVenueInfo
           });
+      }).catch(error => {
+        console.log(error.response);
       });
     });
   }
@@ -436,6 +461,8 @@ class App extends Component {
       if (this.state.venue.id === venueId) {
         this.venueSelected(venueId);
       }
+    }).catch(error => {
+        console.log(error.response);
     });
   }
 
@@ -446,6 +473,20 @@ class App extends Component {
       if (this.state.venue.id === venueId) {
         this.venueSelected(venueId);
       }
+    }).catch(error => {
+        console.log(error.response);
+    });
+  }
+
+  trackDeleteVote(trackId) {
+    var venueId = this.state.venue.id;
+    var userId = this.state.userId;
+    deleteVote(venueId, trackId, userId).then(_ignore => {
+      if (this.state.venue.id === venueId) {
+        this.venueSelected(venueId);
+      }
+    }).catch(error => {
+        console.log(error.response);
     });
   }
 
@@ -622,6 +663,7 @@ class App extends Component {
                     onProposeClose={this.closePropose}
                     onTrackUpvote={this.trackUpvote}
                     onTrackDownvote={this.trackDownvote}
+                    onTrackDeleteVote={this.trackDeleteVote}
                     onTrackVoteskip={this.trackVoteskip}
                   />
                 );

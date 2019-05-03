@@ -10,7 +10,7 @@ html {
     overflow-y: auto;
    max-height: 60vh;
 }
-.track-suggest-frame::-webkit-scrollbar { /* WebKit */
+.track-suggest-frame::-webkit-scrollbar {
     width: 0;
     height: 0;
 }
@@ -219,7 +219,7 @@ color: rgb(255, 215, 0);
   font-size: 16px;
   padding: 16px 30px;
   border: none;
-  margin-top: 15px;
+  margin-top: 25px;
   cursor: pointer;
   border-radius: 4px;
   text-align: center;
@@ -234,9 +234,11 @@ color: rgb(255, 215, 0);
 
 .song-propose-input {
     padding: 10px;
+    font-size: 20px;
 }
 
 .venue-create-input {
+    font-size: 20px;  
 	padding: 5px;
 	  margin: 5px;
 
@@ -246,7 +248,7 @@ color: rgb(255, 215, 0);
   margin: 10% auto; 
   padding: 50px;
   padding-top: 25px;
-  padding-bottom: 35px;
+  padding-bottom: 15px;
 
   border: 1px solid BLACK;
   width: 250px; 
@@ -329,12 +331,17 @@ font-family: Verdana, Arial, sans-serif;
         }
         .track-listing {
         	height: 105px;
+          max-width: 1000px;
         }
 
-.vote-buttons {
-  margin-left: 35px;
-  margin-top: 50px;
+
+.track-listing { 
+  background: IVORY; 
 }
+.track-listing:nth-child(odd) {
+ background: WHITE; 
+}
+
         .track-info {
         	height: 80px;
             position: relative;
@@ -381,7 +388,7 @@ vertical-align: middle;
         }
         .artist,
         .duration {
-            font-size: 12px;
+            font-size: 14px;
             color: #31404d;
         }
         .name,
@@ -395,13 +402,36 @@ vertical-align: middle;
             font-weight: 300;
         }
 
+.vote-buttons {
+  margin-left: 35px;
+  margin-top: 55px;
+}
+
+.downvote-selected {
+  background-color: PINK;
+}
+
+.upvote-selected {
+  background-color: AQUAMARINE;
+}
+
 .upvote-button,
  .downvote-button {
   padding: 5px 15px;
+  border: 1px solid BLACK;
   text-align: center;
   text-decoration: none;
   display: inline-block;
-  font-size: 16px;
+  font-size: 19px;
+  padding: 8px 10px;
+  border-radius: 5px;
+}
+
+.upvote-button {
+  color: green;
+}
+.downvote-button {
+  color: red;
 }
 
 .upvote-button:focus,
@@ -409,12 +439,23 @@ vertical-align: middle;
   outline: none;
 }
 
+.upvote-button:hover,
+.downvote-button:hover {
+  cursor: pointer;
+}
+
 .vote-score {
 	position: relative;
+  display: inline-block;
+  text-align: center;
+	top: -8px;
   width: 20px;
-	top: 2px;
-	margin-top: 200px;
-	padding: 15px;
+  height: 10px;
+  max-width: 30px;
+  padding-left: 13px;
+  padding-right: 15px;
+
 	font-size: 20px;
   font-weight: 510;
 }
+
