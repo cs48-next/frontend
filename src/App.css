@@ -128,8 +128,8 @@ a {
     margin: 1px;
 }
 .now-playing-album-art {
-    width: 150px;
-    height: 150px;
+    width: 170px;
+    height: 170px;
     border-radius: 10px;
     margin: 0 auto;
     display: block;
@@ -301,7 +301,7 @@ padding:0;
             cursor: default;
         }        
 
-.playlist, .track-suggest-frame {
+.track, .track-suggest-frame {
 font-family: Verdana, Arial, sans-serif;
 }
 
@@ -319,9 +319,10 @@ font-family: Verdana, Arial, sans-serif;
         }
         .track {
             overflow: hidden;
-            display: table-row;
             width: 100%;
             z-index: 99999;
+            margin-top: 5px;
+            margin-bottom: 5px;
         }
         .track img {
             display: block;
@@ -330,9 +331,17 @@ font-family: Verdana, Arial, sans-serif;
 
         }
         .track-listing {
-        	height: 105px;
+        	height: 95px;
           max-width: 1000px;
+          padding-top: 10px;
+          padding-bottom: 15px;
         }
+
+.currently-playing {
+  border: 1px solid MISTYROSE;
+  border-radius: 3px;
+background: SEASHELL;
+}        
 
 
 .track-listing { 
@@ -353,7 +362,6 @@ font-family: Verdana, Arial, sans-serif;
         .track-place,
         .track-info {
             display: table-cell;
-            border-top: 5px solid white;
         }
         .track-place {
         		font-family: -apple-system,
@@ -365,7 +373,7 @@ font-family: Verdana, Arial, sans-serif;
 		Helvetica Neue, 
 		sans-serif;
 		color: gray;
-		padding-right: 5px;
+		padding-right: 3px;
 	font-size: 25px;
 	margin: 15px;
 
@@ -445,17 +453,52 @@ vertical-align: middle;
 }
 
 .vote-score {
-	position: relative;
+  position: relative;
   display: inline-block;
   text-align: center;
-	top: -8px;
+  top: -8px;
   width: 20px;
   height: 10px;
   max-width: 30px;
   padding-left: 13px;
   padding-right: 15px;
 
-	font-size: 20px;
+  font-size: 20px;
   font-weight: 510;
 }
+
+.voteskip-button {
+  background: none;
+  border: 1px solid BLACK;
+  padding: 3px 15px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 19px;
+  border-radius: 5px; 
+  cursor: pointer;
+
+}
+.voteskip-button:focus {
+  outline: none;
+}
+
+.voteskip-selected {
+  background-color: ROSYBROWN;
+}
+.voteskip-score {
+  position: relative;
+  display: inline-block;
+  text-align: center;
+  top: 1px;
+  width: 20px;
+  height: 10px;
+  max-width: 30px;
+  padding-left: 13px;
+  padding-right: 15px;
+
+  font-size: 20px;
+  font-weight: 510;
+}
+
 

@@ -1,11 +1,11 @@
 import React, { Component, useEffect } from "react";
 import Modal from "react-modal";
 import * as moment from "moment";
-import Cookies from 'universal-cookie';
+import Cookies from "universal-cookie";
 import uuid from "uuid";
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faThumbsUp, faThumbsDown } from '@fortawesome/free-regular-svg-icons'
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faThumbsUp, faThumbsDown } from "@fortawesome/free-regular-svg-icons";
 
 import "./App.css";
 
@@ -19,9 +19,14 @@ import {
   downvoteTrack,
   deleteVote,
   queryTracks,
-  auth
+  auth,
+  venueNextTrack,
+  voteskipVenue,
+  deleteVoteskip
 } from "./api";
 import { geolocated } from "react-geolocated";
+
+const cookies = new Cookies();
 
 function VenueGrid({ venues, onVenueSelect }) {
   return (
@@ -83,48 +88,147 @@ function VenueGrid({ venues, onVenueSelect }) {
   );
 }
 
+const API_KEY = "ZDFhMjNjNWItZjA4OC00NjJhLWFlYWQtYzE2MmUyZDUxOTBi";
+const API_SECRET = "YjdiZWIzMjAtMjY0Yy00NDFmLTkzZWEtZTk4ZjBjMmU4NzQ1";
+const ACCESS_KEY = "me@keremc.com";
+const ACCESS_SECRET = "kopekbalik";
+
+var napsterCurSong = null;
+var Napster = window.Napster;
+
 function VenueInfo({
   userId,
+  authData,
   venue,
   venueTrackInfo,
+  isFetchingNextTrack,
+  onNextTrack,  
   onProposeOpen,
   onProposeClose,
   onTrackUpvote,
   onTrackDownvote,
   onTrackDeleteVote,
-  onTrackVoteskip
+  onTrackVoteskip,
+  onTrackDeleteVoteskip
 }) {
 
   useEffect(() => {
     if (venue.host_id === userId) {
-      console.log('This is your venue!');
-      var API_KEY = 'ZDFhMjNjNWItZjA4OC00NjJhLWFlYWQtYzE2MmUyZDUxOTBi';
-      var API_SECRET = 'YjdiZWIzMjAtMjY0Yy00NDFmLTkzZWEtZTk4ZjBjMmU4NzQ1';
-      var ACCESS_KEY = 'me@keremc.com';
-      var ACCESS_SECRET = 'kopekbalik';      
 
-      window.Napster.init({
-        consumerKey: API_KEY,
-        isHTML5Compatible: true,
-        version: 'v2.2',
-        player: 'player-frame'
-      });
-      window.Napster.player.on('ready', function (e) {
-        console.log('initialized');
-        auth(ACCESS_KEY, ACCESS_SECRET, API_KEY, API_SECRET).then(response => {
-          console.log(response);
-        }).catch(error => {
-          console.log(error.response);
-        });
-      });
-      window.Napster.player.on('error', console.log);
+  var playSong = (trackId) => {
+    napsterCurSong = trackId;
+    Napster.player.play(napsterCurSong);     
+    console.log("Playing: " + napsterCurSong);
+  }
+
+  var stopSong = () => {
+    napsterCurSong = null;
+    console.log("Stopping song");
+    Napster.player.pause();
+  }
+
+  var setupPlayer = () => {
+        if (!authData.initialized) {
+          if (!authData.initializeInProgress) {
+            console.log("Initializing player");
+            authData.initializeInProgress = true;
+            Napster.init({
+              consumerKey: API_KEY,
+              isHTML5Compatible: true,
+              version: "v2.2",
+              player: "player-frame"
+            });
+
+            Napster.player.on("ready", () => {
+              authData.initialized = true; 
+              authData.initializeInProgress = false;
+            });
+
+            Napster.player.on('playevent', function(e) {
+              var data = e.data;
+              if (data.code === 'PlayComplete') {
+                console.log('Song completed');
+                napsterCurSong = null;        
+                onNextTrack();
+              }
+              console.log(e.data);
+            });            
+            Napster.player.on("error", console.log);
+          } else {
+            console.log("Initialization in progress")
+          }
+        } else {
+          if (!authData.authed) {
+            if (authData.tokenLoadInProgress) {
+              console.log("Token load in progress");
+            } else {
+              console.log("Getting auth tokens...");
+              authData.tokenLoadInProgress = true;
+
+              auth(ACCESS_KEY, ACCESS_SECRET, API_KEY, API_SECRET)
+                .then(response => {
+                  authData.tokenLoadInProgress = false;
+
+                  console.log(response.access_token);
+                  console.log(response.refresh_token);
+                  Napster.member.set({
+                    accessToken: response.access_token,
+                    refreshToken: response.refresh_token
+                  });
+                  authData.authed = true;
+                })
+                .catch(error => {
+                  console.log(error);
+                });
+            }
+          } else {
+            if (isFetchingNextTrack()) {
+              console.log('Fetching next track in progress');
+            } else {
+              if (napsterCurSong == null) {
+                console.log("No song currently playing");
+
+                if (venue.current_track_id == null) {
+                  console.log('Venue has no current_track_id, requesting next song in playlist');
+                  onNextTrack();
+                } else {
+                  playSong(venue.current_track_id);
+                }
+              } else {
+                if (napsterCurSong !== venue.current_track_id) {
+                  console.log("Song doesn't match what server sent");
+
+                  if (venue.current_track_id == null) {
+                    stopSong();
+                  } else {
+                    console.log("Changing song");
+                    playSong(venue.current_track_id);                    
+                  }
+                } else {
+                  console.log("Napster cur song: " + napsterCurSong);
+                }
+              }
+            }
+          }
+        }  
+  }
+
+
+      setupPlayer();
+      var timer = setInterval(setupPlayer, 1000);
 
       // do Napster.init
-      // 
+      // run a task every half second
+      // if Napster is initialized and current track is null or songPlaying = false
+      // play new song
+      // songPlaying: true when song starts
+      // songPlaying: false when using event to see if song ends
+      //
+      return () => clearInterval(timer);
     } else {
-      console.log('This is not your venue!');
+      console.log("This is not your venue!");
     }
-  }, [venue, userId]);
+  }, [authData, userId, venue.host_id, venue.current_track_id, onNextTrack, isFetchingNextTrack]);
 
   return (
     <div className="venue-info center-text">
@@ -144,7 +248,73 @@ function VenueInfo({
         <h2 className="playlist-title">Currently playing</h2>
       </div>
 
-      <div className="playlist-container" />
+      <div className="playlist-container">
+        {(() => {
+          if (venue.current_track_id == null) {
+            return null;
+          } else {
+            var trackId = venue.current_track_id;
+            var trackInfo = venueTrackInfo[trackId];
+
+            var score = venue.vote_skips.length;
+
+            var voteskipExists = venue.vote_skips.find(vote => vote.user_id === userId);
+
+            return (
+               <div className="track currently-playing">
+                    <div className="album-art">
+                      <img
+                        alt=""
+                        src={
+                          "https://api.napster.com/imageserver/v2/albums/" +
+                          trackInfo.albumId +
+                          "/images/170x170.jpg"
+                        }
+                      />
+                    </div>
+
+                    <div className="track-info">
+                      <div className="name">{trackInfo.name}</div>
+                      <div className="artist">
+                        <span className="bold artist-name">
+                          {trackInfo.artistName}
+                        </span>
+                        <span className="album-name">
+                          {" "}
+                          - {trackInfo.albumName}
+                        </span>
+                      </div>
+                      <div className="duration">
+                        {trackInfo.playbackSeconds === 0
+                          ? "?:??"
+                          : moment
+                              .utc(trackInfo.playbackSeconds * 1000)
+                              .format("mm:ss")}
+                      </div>
+                      <div className="vote-buttons">
+                        <button
+                          className={
+                            "voteskip-button" +
+                            (voteskipExists ? " voteskip-selected" : "")
+                          }
+                          onClick={() =>
+                            voteskipExists
+                              ? onTrackDeleteVoteskip()
+                              : onTrackVoteskip()
+                          }
+                        >
+                        Skip?
+                        </button>
+                        <div className="voteskip-score">{score}</div>
+                      </div>
+
+                    </div>
+                  </div>
+                  )            
+          }
+
+        })()}
+      </div>
 
       <div className="playlist-header">
         <h2 className="playlist-title">Playlist</h2>
@@ -211,12 +381,32 @@ function VenueInfo({
                       </div>
 
                       <div className="vote-buttons">
-               
-                        <FontAwesomeIcon className={"downvote-button" + (downvoteExists ? " downvote-selected" : "")} icon={faThumbsDown} onClick={() => downvoteExists ? onTrackDeleteVote(trackId) : onTrackDownvote(trackId) }/>
+                        <FontAwesomeIcon
+                          className={
+                            "downvote-button" +
+                            (downvoteExists ? " downvote-selected" : "")
+                          }
+                          icon={faThumbsDown}
+                          onClick={() =>
+                            downvoteExists
+                              ? onTrackDeleteVote(trackId)
+                              : onTrackDownvote(trackId)
+                          }
+                        />
                         <div className="vote-score">{score}</div>
 
-                        <FontAwesomeIcon className={"upvote-button" + (upvoteExists ? " upvote-selected" : "")} icon={faThumbsUp} onClick={() => upvoteExists ? onTrackDeleteVote(trackId) : onTrackUpvote(trackId)} />
-
+                        <FontAwesomeIcon
+                          className={
+                            "upvote-button" +
+                            (upvoteExists ? " upvote-selected" : "")
+                          }
+                          icon={faThumbsUp}
+                          onClick={() =>
+                            upvoteExists
+                              ? onTrackDeleteVote(trackId)
+                              : onTrackUpvote(trackId)
+                          }
+                        />
                       </div>
                     </div>
                   </div>
@@ -237,24 +427,32 @@ function VenueInfo({
 const StateVenueGrid = "venue_grid";
 const StateVenueInfo = "venue_info";
 
-const cookies = new Cookies();
-
 class App extends Component {
   constructor(props) {
     super(props);
 
-    if (cookies.get('user_id') == null) {
+    if (cookies.get("user_id") == null) {
       console.log("No userId found, setting");
-      cookies.set('user_id', uuid.v4(), { path: '/' });
+      cookies.set("user_id", uuid.v4(), { path: "/" });
     }
-    var userId = cookies.get('user_id');
+    var userId = cookies.get("user_id");
+
+    var authData = {
+      authed: false,
+      initialized: false,
+      initializeInProgress: false,
+      authInProgress: false
+    };
 
     this.state = {
       userId: userId,
+      authData: authData,
 
       venues: null,
       venue: null,
       venueTrackInfo: null,
+
+      fetchingNextTrack: false,
 
       creatingVenue: false,
       creationInProgress: false,
@@ -268,6 +466,8 @@ class App extends Component {
       phase: StateVenueGrid
     };
 
+    this.isFetchingNextTrack = this.isFetchingNextTrack.bind(this);
+    this.nextTrack = this.nextTrack.bind(this);
     this.openCreate = this.openCreate.bind(this);
     this.closeCreate = this.closeCreate.bind(this);
     this.venueCreate = this.venueCreate.bind(this);
@@ -284,11 +484,24 @@ class App extends Component {
     this.trackDeleteVote = this.trackDeleteVote.bind(this);
 
     this.trackVoteskip = this.trackVoteskip.bind(this);
+    this.trackDeleteVoteskip = this.trackDeleteVoteskip.bind(this);
     this.trackQueryInputChange = this.trackQueryInputChange.bind(this);
   }
 
   componentDidMount() {
     Modal.setAppElement("body");
+    this.refreshTask = setInterval(() => {
+      if (this.state.phase === StateVenueGrid) {
+        if (this.props.coords != null) {
+          this.loadVenues();        
+        }
+      } else if (this.state.phase === StateVenueInfo) {
+        if (this.state.venue != null) {
+          this.refreshVenue(this.state.venue.id)
+        }
+      }
+    }, 2000);
+
     if (
       this.state.phase === StateVenueGrid &&
       this.state.venues == null &&
@@ -297,6 +510,9 @@ class App extends Component {
       this.loadVenues();
     }
   }
+  componentWillUnmount() {
+    clearInterval(this.refreshTask);
+  }  
   componentDidUpdate(prevProps) {
     if (
       this.state.phase === StateVenueGrid &&
@@ -306,6 +522,9 @@ class App extends Component {
     ) {
       this.loadVenues();
     }
+  }
+  isFetchingNextTrack() {
+    return this.state.fetchingNextTrack;
   }
 
   openCreate() {
@@ -322,6 +541,17 @@ class App extends Component {
       creationInProgress: false,
       creationError: null
     });
+  }
+
+  nextTrack() {
+    this.setState({fetchingNextTrack: true});
+    console.log('Getting next track')
+
+    venueNextTrack(this.state.venue.id).then((venue) => {
+      console.log('Next track received');
+      this.refreshVenue(venue.id, () => this.setState({fetchingNextTrack: false}));
+    })
+
   }
 
   venueCreate(event) {
@@ -379,8 +609,7 @@ class App extends Component {
         console.log(error.response);
         this.setState({ proposalError: "Bad input!" });
       })
-      .then(() => {
-      });
+      .then(() => {});
   }
   trackQueryInputChange(event) {
     var trackQuery = this.trackQuery.value;
@@ -393,110 +622,157 @@ class App extends Component {
   }
 
   runTrackQuery(query) {
-    queryTracks(query).then(response => {
-      var tracks = response.search.data.tracks;
-      this.setState({trackQueryResults: tracks});    
-    }).catch(error => {
-      console.log(error.response);
-    });
+    queryTracks(query)
+      .then(response => {
+        var tracks = response.search.data.tracks;
+        this.setState({ trackQueryResults: tracks });
+      })
+      .catch(error => {
+        console.log(error.response);
+      });
   }
 
   loadVenues() {
     this.setState({
-        venue: null,
-        phase: StateVenueGrid
-      });
+      venue: null,
+      phase: StateVenueGrid
+    });
 
     listVenues(this.props.coords.latitude, this.props.coords.longitude).then(
       response => {
-        this.setState({
+        if (this.state.phase === StateVenueGrid) {
+          this.setState({
             venues: response.venues,
             venue: null,
             phase: StateVenueGrid
           });
+        }
       }
     );
   }
 
-  venueSelected(venue) {
-    this.setState({
-        venues: null,
-        creatingVenue: false,
-        proposingTrack: false,
-        phase: StateVenueInfo
-      });
-
-    fetchVenue(venue).then(venue => {
+  refreshVenue(venueId, callback) {
+    fetchVenue(venueId).then(venue => {
       var playlist = venue.playlist;
-      var trackIds = playlist.map(track => track.track_id);
+      var playlistIds = playlist.map(track => track.track_id);
+      var trackIds = venue.current_track_id != null ? [...playlistIds, venue.current_track_id] :  playlistIds;
 
       (trackIds.length === 0
         ? Promise.resolve({ tracks: [] })
         : getTracksMeta(trackIds)
-      ).then(trackMetaResponse => {
-        var trackInfo = {};
+      )
+        .then(trackMetaResponse => {
+          if (this.state.phase === StateVenueInfo) {
 
-        trackMetaResponse.tracks.forEach(trackObj => {
-          trackInfo[trackObj.id] = trackObj;
+            var trackInfo = {};
+
+            trackMetaResponse.tracks.forEach(trackObj => {
+              trackInfo[trackObj.id] = trackObj;
+            });
+
+            this.setState({
+              venue: venue,
+              venueTrackInfo: trackInfo,            
+              phase: StateVenueInfo
+            });
+
+            if (callback != null) {
+              callback();
+            }            
+          }
+        })
+        .catch(error => {
+          console.log(error);
         });
-
-        this.setState({
-            venues: null,
-            venue: venue,
-            venueTrackInfo: trackInfo,
-            creatingVenue: false,
-            proposingTrack: false,
-            phase: StateVenueInfo
-          });
-      }).catch(error => {
-        console.log(error.response);
-      });
     });
+
+  }
+
+  venueSelected(venueId) {
+    this.setState({
+      venues: null,
+      creatingVenue: false,
+      proposingTrack: false,
+      phase: StateVenueInfo
+    });
+
+    this.refreshVenue(venueId, () => {});
   }
 
   trackUpvote(trackId) {
     var venueId = this.state.venue.id;
     var userId = this.state.userId;
-    upvoteTrack(venueId, trackId, userId).then(vote => {
-      if (this.state.venue.id === venueId) {
-        this.venueSelected(venueId);
-      }
-    }).catch(error => {
+    upvoteTrack(venueId, trackId, userId)
+      .then(vote => {
+        if (this.state.venue.id === venueId) {
+          this.venueSelected(venueId);
+        }
+      })
+      .catch(error => {
         console.log(error.response);
-    });
+      });
   }
 
   trackDownvote(trackId) {
     var venueId = this.state.venue.id;
     var userId = this.state.userId;
-    downvoteTrack(venueId, trackId, userId).then(vote => {
-      if (this.state.venue.id === venueId) {
-        this.venueSelected(venueId);
-      }
-    }).catch(error => {
+    downvoteTrack(venueId, trackId, userId)
+      .then(vote => {
+        if (this.state.venue.id === venueId) {
+          this.venueSelected(venueId);
+        }
+      })
+      .catch(error => {
         console.log(error.response);
-    });
+      });
   }
 
   trackDeleteVote(trackId) {
     var venueId = this.state.venue.id;
     var userId = this.state.userId;
-    deleteVote(venueId, trackId, userId).then(_ignore => {
-      if (this.state.venue.id === venueId) {
-        this.venueSelected(venueId);
-      }
-    }).catch(error => {
+    deleteVote(venueId, trackId, userId)
+      .then(_ignore => {
+        if (this.state.venue.id === venueId) {
+          this.venueSelected(venueId);
+        }
+      })
+      .catch(error => {
         console.log(error.response);
-    });
+      });
   }
 
-  trackVoteskip(trackId) {
-    console.log("Voteskip track " + trackId);
+  trackVoteskip() {
+    var venueId = this.state.venue.id;
+    var userId = this.state.userId;
+    voteskipVenue(venueId, userId)
+      .then(vote => {
+        if (this.state.venue.id === venueId) {
+          this.venueSelected(venueId);
+        }
+      })
+      .catch(error => {
+        console.log(error.response);
+      });
+  }
+  trackDeleteVoteskip() {
+    var venueId = this.state.venue.id;
+    var userId = this.state.userId;
+    deleteVoteskip(venueId, userId)
+      .then(vote => {
+        if (this.state.venue.id === venueId) {
+          this.venueSelected(venueId);
+        }
+      })
+      .catch(error => {
+        console.log(error.response);
+      });    
   }
 
   render() {
     const {
       userId,
+      authData,
+
       venues,
       venue,
       venueTrackInfo,
@@ -537,51 +813,75 @@ class App extends Component {
           >
             <h2 className="center-text">Propose Song</h2>
 
-              <input
-                autoFocus={true}
-                id="song-search"
-                type="text"
-                autoComplete="off"
-                className="song-propose-input"
-                onChange={this.trackQueryInputChange}
-                ref={input => (this.trackQuery = input)}
-                placeholder="Song name"
-              />
-
+            <input
+              autoFocus={true}
+              id="song-search"
+              type="text"
+              autoComplete="off"
+              className="song-propose-input"
+              onChange={this.trackQueryInputChange}
+              ref={input => (this.trackQuery = input)}
+              placeholder="Song name"
+            />
 
             <div className="track-suggest-frame">
-                        {proposalError != null ? (
-              <span className="error">{proposalError}</span>
-            ) : (
-              <span className="error-placeholder">_</span>
-            )}
+              {proposalError != null ? (
+                <span className="error">{proposalError}</span>
+              ) : (
+                <span className="error-placeholder">_</span>
+              )}
 
-            {trackQueryResults != null ? (
-              <ul>
-                {trackQueryResults.map(track => {
-                  return (
-                    <li key={'track-suggest-' + track.id} onClick={()=>{this.trackPropose(venue.id, track.id)}}>
-                     <div className="track-suggest">
-                        <div className="track-suggest-album-art"><img alt="" src={"https://api.napster.com/imageserver/v2/albums/" + track.albumId + "/images/170x170.jpg"}/></div>
+              {trackQueryResults != null ? (
+                <ul>
+                  {trackQueryResults.map(track => {
+                    return (
+                      <li
+                        key={"track-suggest-" + track.id}
+                        onClick={() => {
+                          this.trackPropose(venue.id, track.id);
+                        }}
+                      >
+                        <div className="track-suggest">
+                          <div className="track-suggest-album-art">
+                            <img
+                              alt=""
+                              src={
+                                "https://api.napster.com/imageserver/v2/albums/" +
+                                track.albumId +
+                                "/images/170x170.jpg"
+                              }
+                            />
+                          </div>
 
-                        <div className="track-suggest-info">
-                          <div className="track-suggest-name">{track.name}</div>
-                          <div className="track-suggest-artist">{track.artistName}</div>
-                          <div className="track-suggest-album">{track.albumName}</div>
-                          <div className="track-suggest-duration">{track.playbackSeconds === 0 ? "?:??" : moment.utc(track.playbackSeconds * 1000).format("mm:ss")}</div>
+                          <div className="track-suggest-info">
+                            <div className="track-suggest-name">
+                              {track.name}
+                            </div>
+                            <div className="track-suggest-artist">
+                              {track.artistName}
+                            </div>
+                            <div className="track-suggest-album">
+                              {track.albumName}
+                            </div>
+                            <div className="track-suggest-duration">
+                              {track.playbackSeconds === 0
+                                ? "?:??"
+                                : moment
+                                    .utc(track.playbackSeconds * 1000)
+                                    .format("mm:ss")}
+                            </div>
+                          </div>
                         </div>
-                     </div> 
-                    </li>
+                      </li>
                     );
-                })}
-              </ul>
-            ) : (null)}
+                  })}
+                </ul>
+              ) : null}
             </div>
-
           </Modal>
 
           <Modal
-            autoFocus={false}          
+            autoFocus={false}
             isOpen={creatingVenue}
             onRequestClose={this.closeCreate}
             className="venue-create-modal center-text"
@@ -595,7 +895,7 @@ class App extends Component {
               onSubmit={this.venueCreate}
             >
               <input
-                autoFocus={true}              
+                autoFocus={true}
                 type="text"
                 className="venue-create-input"
                 ref={input => (this.inputVenueName = input)}
@@ -656,15 +956,19 @@ class App extends Component {
                   <h2 className="loading-text">Loading venue...</h2>
                 ) : (
                   <VenueInfo
-                    userId={userId}                  
+                    userId={userId}
                     venue={venue}
+                    authData={authData}
+                    isFetchingNextTrack={this.isFetchingNextTrack}
                     venueTrackInfo={venueTrackInfo}
+                    onNextTrack={this.nextTrack}
                     onProposeOpen={this.openPropose}
                     onProposeClose={this.closePropose}
                     onTrackUpvote={this.trackUpvote}
                     onTrackDownvote={this.trackDownvote}
                     onTrackDeleteVote={this.trackDeleteVote}
                     onTrackVoteskip={this.trackVoteskip}
+                    onTrackDeleteVoteskip={this.trackDeleteVoteskip}
                   />
                 );
               default:

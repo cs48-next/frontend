@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const HOST = `https://api.song.buzz`;
+const HOST = 'http://localhost:8080';//`https://api.song.buzz`;
 const NAPSTER_HOST = `https://api.napster.com`;
 
 const NAPSTER_API_KEY = "ZDFhMjNjNWItZjA4OC00NjJhLWFlYWQtYzE2MmUyZDUxOTBi";
@@ -24,12 +24,17 @@ export function auth(username, password, apiKey, apiSecret) {
 	.then((response) => response.data)
 }
 
-export function listVenues (latitude, longitude) {
+export function venueNextTrack(venueId) {
+	return axios.post(HOST + `/venue/${venueId}/next`)
+	.then((response) => response.data)
+}
+
+export function listVenues(latitude, longitude) {
 	return axios.get(HOST + `/venue?latitude=${latitude}&longitude=${longitude}`)
 		.then((response) => response.data)
 }
 
-export function fetchVenue (venue_id) {
+export function fetchVenue(venue_id) {
 	return axios.get(HOST + `/venue/${venue_id}`)
 		.then((response) => response.data)
 }
@@ -46,6 +51,16 @@ export function createVenue(venue_name, dj_name, host_id, latitude, longitude) {
 
 export function proposeTrack(venue_id, track_id) {
 	return axios.put(HOST + `/track/${venue_id}/${track_id}`)
+		.then((response) => response.data)
+}
+
+export function voteskipVenue(venue_id, user_id) {
+	return axios.put(HOST + `/voteskip/${venue_id}/${user_id}`)
+		.then((response) => response.data)
+}
+
+export function deleteVoteskip(venue_id, user_id) {
+	return axios.delete(HOST + `/voteskip/${venue_id}/${user_id}`)
 		.then((response) => response.data)
 }
 
