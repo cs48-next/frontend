@@ -1,0 +1,13 @@
+sudo: required
+cache: npm
+node_js: 
+- "stable"
+services: docker
+script: 
+- npm test
+- npm install
+- npm run build
+- docker build . -t gcr.io/maximal-brace-238118/frontend:latest
+- docker container lits
+
+
