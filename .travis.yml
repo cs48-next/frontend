@@ -4,8 +4,8 @@ node_js:
 - "stable"
 services: docker
 script: 
-- npm test
 - npm install
+- npm test
 - npm run build
 - docker build . -t gcr.io/maximal-brace-238118/frontend:latest
 - docker container list
