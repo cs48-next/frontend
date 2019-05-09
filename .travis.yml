@@ -8,6 +8,6 @@ script:
 - npm install
 - npm run build
 - docker build . -t gcr.io/maximal-brace-238118/frontend:latest
-- docker container lits
+- docker container list
 
 
