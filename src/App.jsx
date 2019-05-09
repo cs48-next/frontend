@@ -96,6 +96,18 @@ const ACCESS_SECRET = "kopekbalik";
 var napsterCurSong = null;
 var Napster = window.Napster;
 
+  var playSong = (trackId) => {
+    napsterCurSong = trackId;
+    Napster.player.play(napsterCurSong);     
+    console.log("Playing: " + napsterCurSong);
+  }
+
+  var stopSong = () => {
+    napsterCurSong = null;
+    console.log("Stopping song");
+    Napster.player.pause();
+  }
+
 function VenueInfo({
   userId,
   authData,
@@ -113,20 +125,15 @@ function VenueInfo({
 }) {
 
   useEffect(() => {
+    return () => {
+      if (napsterCurSong != null) {
+        stopSong();
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     if (venue.host_id === userId) {
-
-  var playSong = (trackId) => {
-    napsterCurSong = trackId;
-    Napster.player.play(napsterCurSong);     
-    console.log("Playing: " + napsterCurSong);
-  }
-
-  var stopSong = () => {
-    napsterCurSong = null;
-    console.log("Stopping song");
-    Napster.player.pause();
-  }
-
   var setupPlayer = () => {
         if (!authData.initialized) {
           if (!authData.initializeInProgress) {
@@ -144,6 +151,17 @@ function VenueInfo({
               authData.initializeInProgress = false;
             });
 
+            Napster.player.on('playtimer', function(e) {
+              var data = e.data;
+              if (data.code === 'trackProgress' && data.currentTime > 0) {
+                if (napsterCurSong == null || napsterCurSong.toLowerCase() !== data.id.toLowerCase()) {
+                  stopSong();
+                }
+
+              }
+              console.log(e.data);
+            })
+
             Napster.player.on('playevent', function(e) {
               var data = e.data;
               if (data.code === 'PlayComplete') {
@@ -153,6 +171,7 @@ function VenueInfo({
               }
               console.log(e.data);
             });            
+            Napster.player.on("metadata", console.log);
             Napster.player.on("error", console.log);
           } else {
             console.log("Initialization in progress")
@@ -675,11 +694,10 @@ class App extends Component {
               venueTrackInfo: trackInfo,            
               phase: StateVenueInfo
             });
-
+          }
             if (callback != null) {
               callback();
-            }            
-          }
+            }       
         })
         .catch(error => {
           console.log(error);
