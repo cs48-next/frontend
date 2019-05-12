@@ -12,19 +12,24 @@ services:
 
 env:
   global:
-  - CLOUDSDK_CORE_DISABLE_PROMPTS=1 
+  - GOOGLE_APPLICATION_CREDENTIALS=~/gcloud-service-key.json
+  - PROJECT_NAME=maximal-brace-238118
+  - CLUSTER_NAME=production-cluster
+  - CLOUDSDK_COMPUTE_ZONE=us-west2-b
+  - NODE_ENV=CI
 before_install:
-- if [ ! -d $HOME/google-cloud-sdk/bin ]; then
-    rm -rf $HOME/google-cloud-sdk;
-    curl https://sdk.cloud.google.com | bash > /dev/null;
-  fi
-- source $HOME/google-cloud-sdk/path.bash.inc
-- gcloud components update kubectl
-- gcloud version
+- if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk; export CLOUDSDK_CORE_DISABLE_PROMPTS=1; curl https://sdk.cloud.google.com | bash; fi
+- source /home/travis/google-cloud-sdk/path.bash.inc
+- gcloud --quiet version
+- gcloud --quiet components update
+- gcloud --quiet components beta update
+- gcloud --quiet components update kubectl
+- echo $GCLOUD_SERVICE_KEY | base64 --decode -i > ${HOME}/gcloud-service-key.json
+- gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
 install:
 - npm install
 script: 
 - npm test
 - npm run build
-- docker build . -t gcr.io/maximal-brace-238118/frontend:latest
-- docker container list
+- docker build -t gcr.io/maximal-brace-238118/frontend:latest .
+- gcloud docker -- push gcr.io/maximal-brace-238118/frontend:latest
