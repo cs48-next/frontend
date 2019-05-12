@@ -1,13 +1,30 @@
 sudo: required
-cache: npm
+cache:
+  npm: true
+  directories:
+  - $HOME/google-cloud-sdk
+
 node_js: 
 - "stable"
-services: docker
-script: 
+
+services:
+- docker
+
+env:
+  global:
+  - CLOUDSDK_CORE_DISABLE_PROMPTS=1 
+before_install:
+- if [ ! -d $HOME/google-cloud-sdk/bin ]; then
+    rm -rf $HOME/google-cloud-sdk;
+    curl https://sdk.cloud.google.com | bash > /dev/null;
+  fi
+- source $HOME/google-cloud-sdk/path.bash.inc
+- gcloud components update kubectl
+- gcloud version
+install:
 - npm install
+script: 
 - npm test
 - npm run build
 - docker build . -t gcr.io/maximal-brace-238118/frontend:latest
 - docker container list
-
-
