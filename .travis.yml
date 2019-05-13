@@ -26,6 +26,7 @@ before_install:
 - echo $GCLOUD_SERVICE_KEY | base64 --decode -i > ${HOME}/gcloud-service-key.json
 - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
 - gcloud config set compute/zone $COMPUTE_ZONE
+- gcloud config set project $PROJECT_NAME
 - gcloud container clusters get-credentials $CLUSTER_NAME
 install:
 - npm install
