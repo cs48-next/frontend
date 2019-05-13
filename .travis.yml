@@ -13,9 +13,10 @@ services:
 env:
   global:
   - GOOGLE_APPLICATION_CREDENTIALS=~/gcloud-service-key.json
+  - IMAGE_NAME=frontend
   - PROJECT_NAME=maximal-brace-238118
+  - COMPUTE_ZONE=us-west2-b  
   - CLUSTER_NAME=production-cluster
-  - CLOUDSDK_COMPUTE_ZONE=us-west2-b
   - NODE_ENV=CI
 before_install:
 - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk; export CLOUDSDK_CORE_DISABLE_PROMPTS=1; curl https://sdk.cloud.google.com | bash; fi
@@ -23,11 +24,15 @@ before_install:
 - gcloud --quiet version
 - gcloud --quiet components update kubectl
 - echo $GCLOUD_SERVICE_KEY | base64 --decode -i > ${HOME}/gcloud-service-key.json
+- gcloud config set compute/zone $COMPUTE_ZONE
+- gcloud container clusters get-credentials $CLUSTER_NAME
 - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
 install:
 - npm install
 script: 
 - npm test
 - npm run build
-- docker build -t gcr.io/maximal-brace-238118/frontend:latest .
-- gcloud docker -- push gcr.io/maximal-brace-238118/frontend:latest
+- docker build -t gcr.io/$PROJECT_NAME/$IMAGE_NAME:$TRAVIS_COMMIT .
+- gcloud docker -- push gcr.io/$PROJECT_NAME/$IMAGE_NAME:$TRAVIS_COMMIT
+- gcloud --quiet container images add-tag gcr.io/$PROJECT_NAME/$IMAGE_NAME:$TRAVIS_COMMIT gcr.io/$PROJECT_NAME/$IMAGE_NAME:latest
+
