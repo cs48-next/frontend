@@ -502,3 +502,7 @@ vertical-align: middle;
 }
 
 
+.progress-drag {
+      cursor: pointer;
+}
+

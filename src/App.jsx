@@ -7,6 +7,8 @@ import uuid from "uuid";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faThumbsUp, faThumbsDown } from "@fortawesome/free-regular-svg-icons";
 
+import Draggable, {DraggableCore} from 'react-draggable';
+
 import "./App.css";
 
 import {
@@ -121,7 +123,10 @@ function VenueInfo({
   onTrackDownvote,
   onTrackDeleteVote,
   onTrackVoteskip,
-  onTrackDeleteVoteskip
+  onTrackDeleteVoteskip,
+  adminProgressBarStart,
+  adminProgressBarStop,
+  adminProgessBarDrag
 }) {
 
   useEffect(() => {
@@ -333,6 +338,23 @@ function VenueInfo({
           }
 
         })()}
+      </div>
+
+      <div className="progress-container">
+      {(() => {
+          return (
+            <Draggable
+              axis="x"
+              handle=".handle"
+              position={null}
+              onStart={adminProgressBarStart}
+              onDrag={adminProgessBarDrag}
+              onStop={adminProgressBarStop}>
+    
+              <svg  className="handle progress-drag" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12.18 12.18"><path d="M12.18 1.41L10.77 0 6.09 4.68 1.41 0 0 1.41l4.68 4.68L0 10.77l1.41 1.41L6.09 7.5l4.68 4.68 1.41-1.41L7.5 6.09l4.68-4.68z"></path></svg>
+            </Draggable>
+            )
+      })()}
       </div>
 
       <div className="playlist-header">
@@ -786,6 +808,18 @@ class App extends Component {
       });    
   }
 
+  adminProgressBarStart() {
+    console.log("start");
+  }
+  adminProgressBarStop() {
+    console.log("stop");
+  }
+
+  adminProgessBarDrag(e, ui) {
+    console.log(e);
+    console.log(ui);
+  }
+
   render() {
     const {
       userId,
@@ -987,6 +1021,9 @@ class App extends Component {
                     onTrackDeleteVote={this.trackDeleteVote}
                     onTrackVoteskip={this.trackVoteskip}
                     onTrackDeleteVoteskip={this.trackDeleteVoteskip}
+                    adminProgressBarStart={this.adminProgressBarStart}
+                    adminProgressBarStop={this.adminProgressBarStop}
+                    adminProgessBarDrag={this.adminProgessBarDrag}
                   />
                 );
               default:
