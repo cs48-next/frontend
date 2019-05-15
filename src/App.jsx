@@ -6,8 +6,9 @@ import uuid from "uuid";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faThumbsUp, faThumbsDown } from "@fortawesome/free-regular-svg-icons";
+import { faPlay, faPause } from "@fortawesome/free-solid-svg-icons";
 
-import Draggable, {DraggableCore} from 'react-draggable';
+import Draggable from 'react-draggable';
 
 import "./App.css";
 
@@ -109,14 +110,20 @@ var Napster = window.Napster;
     console.log("Stopping song");
     Napster.player.pause();
   }
-
+var seekBarRef = React.createRef();
 function VenueInfo({
   userId,
   authData,
   venue,
+  currentTime,
+  totalTime,
   venueTrackInfo,
   isFetchingNextTrack,
   onNextTrack,  
+  isScrubbingTrack,
+  scrubX,
+  needsSeek,
+  onSeekDone,
   onProposeOpen,
   onProposeClose,
   onTrackUpvote,
@@ -126,16 +133,18 @@ function VenueInfo({
   onTrackDeleteVoteskip,
   adminProgressBarStart,
   adminProgressBarStop,
-  adminProgessBarDrag
+  adminProgessBarDrag,
+  updateCurrentTime
 }) {
-
+  
   useEffect(() => {
     return () => {
       if (napsterCurSong != null) {
+        updateCurrentTime(0, 0);
         stopSong();
       }
     }
-  }, []);
+  }, [updateCurrentTime]);
 
   useEffect(() => {
     if (venue.host_id === userId) {
@@ -160,11 +169,14 @@ function VenueInfo({
               var data = e.data;
               if (data.code === 'trackProgress' && data.currentTime > 0) {
                 if (napsterCurSong == null || napsterCurSong.toLowerCase() !== data.id.toLowerCase()) {
+                  updateCurrentTime(0, 0);
                   stopSong();
+                } else {
+                  var cur = data.currentTime;
+                  var total = data.totalTime;
+                  updateCurrentTime(cur, total);                
                 }
-
-              }
-              console.log(e.data);
+              } 
             })
 
             Napster.player.on('playevent', function(e) {
@@ -173,8 +185,7 @@ function VenueInfo({
                 console.log('Song completed');
                 napsterCurSong = null;        
                 onNextTrack();
-              }
-              console.log(e.data);
+              } 
             });            
             Napster.player.on("metadata", console.log);
             Napster.player.on("error", console.log);
@@ -216,6 +227,7 @@ function VenueInfo({
                   console.log('Venue has no current_track_id, requesting next song in playlist');
                   onNextTrack();
                 } else {
+                  updateCurrentTime(0, 0);
                   playSong(venue.current_track_id);
                 }
               } else {
@@ -223,9 +235,11 @@ function VenueInfo({
                   console.log("Song doesn't match what server sent");
 
                   if (venue.current_track_id == null) {
+                    updateCurrentTime(0, 0);
                     stopSong();
                   } else {
                     console.log("Changing song");
+                    updateCurrentTime(0, 0);
                     playSong(venue.current_track_id);                    
                   }
                 } else {
@@ -252,7 +266,7 @@ function VenueInfo({
     } else {
       console.log("This is not your venue!");
     }
-  }, [authData, userId, venue.host_id, venue.current_track_id, onNextTrack, isFetchingNextTrack]);
+  }, [authData, userId, venue.host_id, venue.current_track_id, onNextTrack, isFetchingNextTrack, updateCurrentTime]);
 
   return (
     <div className="venue-info center-text">
@@ -285,6 +299,7 @@ function VenueInfo({
             var voteskipExists = venue.vote_skips.find(vote => vote.user_id === userId);
 
             return (
+<div>
                <div className="track currently-playing">
                     <div className="album-art">
                       <img
@@ -334,28 +349,66 @@ function VenueInfo({
 
                     </div>
                   </div>
+
+      <div className="admin-progress-container">
+        <div ref={seekBarRef} className="admin-progress-seek-container">
+        <FontAwesomeIcon
+          className={
+            "admin-play-button"
+          }
+          icon={faPlay}
+          onClick={() =>
+            console.log("play")
+          }
+        />
+
+        {(() => {
+          if (isScrubbingTrack) {
+            var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * trackInfo.playbackSeconds;
+            return (
+                <div>
+                  <span className="scrub-time admin-current-time-scrubbing">{moment.utc(curTimeScrub * 1000).format("m:ss")}</span>
+                  <span className="scrub-time admin-time-remaining-scrubbing">{"-" + moment.utc( (trackInfo.playbackSeconds - curTimeScrub) * 1000).format("m:ss")}</span>
+                </div>
+                );
+          } else {
+            return (
+              <div>
+                <span className="scrub-time admin-current-time">{moment.utc((currentTime === 0 ? 0 : currentTime) * 1000).format("m:ss")}</span>
+                <span className="scrub-time admin-time-remaining">{"-" + moment.utc(((totalTime === 0 ? trackInfo.playbackSeconds : totalTime) - (currentTime)) * 1000).format("m:ss")}</span>
+              </div>
+              );
+          }
+        })()}
+
+
+
+          <div className="admin-seekbar"/>
+          {(() => {
+              return (
+                <Draggable
+                  position={isScrubbingTrack ? null : {x:(currentTime/(totalTime === 0 ? 1 : totalTime)) * (seekBarRef.current == null ? 0 : (seekBarRef.current.offsetWidth - 20)),y:0}}
+                  bounds=".admin-progress-seek-container"
+                  axis="x"
+                  handle=".handle"
+                  onStart={adminProgressBarStart}
+                  onDrag={adminProgessBarDrag}
+                  onStop={adminProgressBarStop}>
+        
+
+                  <div className={"admin-scrubber-circle handle" + (isScrubbingTrack ? " admin-scrubber-circle-selected" : "")}></div>
+                </Draggable>
+                )
+          })()}
+        </div>
+      </div>                  
+                  </div>
                   )            
           }
 
         })()}
       </div>
 
-      <div className="progress-container">
-      {(() => {
-          return (
-            <Draggable
-              axis="x"
-              handle=".handle"
-              position={null}
-              onStart={adminProgressBarStart}
-              onDrag={adminProgessBarDrag}
-              onStop={adminProgressBarStop}>
-    
-              <svg  className="handle progress-drag" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12.18 12.18"><path d="M12.18 1.41L10.77 0 6.09 4.68 1.41 0 0 1.41l4.68 4.68L0 10.77l1.41 1.41L6.09 7.5l4.68 4.68 1.41-1.41L7.5 6.09l4.68-4.68z"></path></svg>
-            </Draggable>
-            )
-      })()}
-      </div>
 
       <div className="playlist-header">
         <h2 className="playlist-title">Playlist</h2>
@@ -504,6 +557,11 @@ class App extends Component {
 
       trackQueryResults: null,
 
+      currentTime: 0,
+      totalTime: 0,
+
+      scrubbingTrack: false,
+
       phase: StateVenueGrid
     };
 
@@ -527,6 +585,14 @@ class App extends Component {
     this.trackVoteskip = this.trackVoteskip.bind(this);
     this.trackDeleteVoteskip = this.trackDeleteVoteskip.bind(this);
     this.trackQueryInputChange = this.trackQueryInputChange.bind(this);
+
+    this.updateCurrentTime = this.updateCurrentTime.bind(this);
+
+    this.adminProgessBarDrag = this.adminProgessBarDrag.bind(this);
+    this.adminProgressBarStart = this.adminProgressBarStart.bind(this);
+    this.adminProgressBarStop = this.adminProgressBarStop.bind(this);
+
+    this.onSeekDone = this.onSeekDone.bind(this);
   }
 
   componentDidMount() {
@@ -809,15 +875,25 @@ class App extends Component {
   }
 
   adminProgressBarStart() {
-    console.log("start");
+    this.setState({scrubbingTrack: true, scrubX: (this.state.currentTime/(this.state.totalTime === 0 ? 1 : this.state.totalTime)) * (seekBarRef.current == null ? 0 : (seekBarRef.current.offsetWidth) - 20)});
   }
   adminProgressBarStop() {
-    console.log("stop");
+    this.setState({scrubbingTrack: false, needsSeek: true});
+  }
+
+  onSeekDone() {
+    this.setState({needsSeek: false});
   }
 
   adminProgessBarDrag(e, ui) {
-    console.log(e);
-    console.log(ui);
+    this.setState({scrubX: ui.x})
+  }
+
+  updateCurrentTime(currentTime, totalTime) {
+    this.setState({
+      currentTime: currentTime,
+      totalTime: totalTime
+    });
   }
 
   render() {
@@ -827,6 +903,14 @@ class App extends Component {
 
       venues,
       venue,
+
+      currentTime,
+      totalTime,
+
+      scrubbingTrack,
+      scrubX,
+      needsSeek,
+
       venueTrackInfo,
 
       creatingVenue,
@@ -1010,10 +1094,16 @@ class App extends Component {
                   <VenueInfo
                     userId={userId}
                     venue={venue}
+                    currentTime={currentTime}
+                    totalTime={totalTime}
                     authData={authData}
                     isFetchingNextTrack={this.isFetchingNextTrack}
                     venueTrackInfo={venueTrackInfo}
                     onNextTrack={this.nextTrack}
+                    isScrubbingTrack={scrubbingTrack}
+                    scrubX={scrubX}
+                    needsSeek={needsSeek}
+                    onSeekDone={this.onSeekDone}
                     onProposeOpen={this.openPropose}
                     onProposeClose={this.closePropose}
                     onTrackUpvote={this.trackUpvote}
@@ -1024,6 +1114,7 @@ class App extends Component {
                     adminProgressBarStart={this.adminProgressBarStart}
                     adminProgressBarStop={this.adminProgressBarStop}
                     adminProgessBarDrag={this.adminProgessBarDrag}
+                    updateCurrentTime={this.updateCurrentTime}
                   />
                 );
               default:
