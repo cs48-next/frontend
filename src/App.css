@@ -74,26 +74,30 @@ html {
   color: BLACK;
   position: relative;
   float:left;
-  right: 63px;
+  bottom: 2px;
+  right: 60px;
 }
 .admin-time-remaining {
   color: GRAY;
   position: relative;
   float:right;
-  left: 48px;
+  bottom: 2px;  
+  left: 45px;
 }
 
 .admin-current-time-scrubbing {
   color: #99a7ee;
   position: relative;
   float:left;
-  right: 63px; 
+  bottom: 2px;  
+  right: 60px; 
 }
 .admin-time-remaining-scrubbing {
   color: #99a7ee;
   position: relative;
   float:right;
-  left: 48px;  
+  bottom: 2px;  
+  left: 45px;  
 
 }
 
