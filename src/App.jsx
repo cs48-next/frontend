@@ -363,6 +363,7 @@ function VenueInfo({
         />
 
         {(() => {
+          var curTime = Math.min(totalTime, currentTime); 
           if (isScrubbingTrack) {
             var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * trackInfo.playbackSeconds;
             return (
@@ -374,8 +375,8 @@ function VenueInfo({
           } else {
             return (
               <div>
-                <span className="scrub-time admin-current-time">{moment.utc((currentTime === 0 ? 0 : currentTime) * 1000).format("m:ss")}</span>
-                <span className="scrub-time admin-time-remaining">{"-" + moment.utc(((totalTime === 0 ? trackInfo.playbackSeconds : totalTime) - (currentTime)) * 1000).format("m:ss")}</span>
+                <span className="scrub-time admin-current-time">{moment.utc(curTime * 1000).format("m:ss")}</span>
+                <span className="scrub-time admin-time-remaining">{"-" + moment.utc(((totalTime === 0 ? trackInfo.playbackSeconds : totalTime) - (curTime)) * 1000).format("m:ss")}</span>
               </div>
               );
           }
@@ -656,7 +657,7 @@ class App extends Component {
 
     venueNextTrack(this.state.venue.id).then((venue) => {
       console.log('Next track received');
-      this.refreshVenue(venue.id, () => this.setState({fetchingNextTrack: false}));
+      this.refreshVenue(venue.id, () => this.setState({fetchingNextTrack: false, currentTime: 0, totalTime: 0}));
     })
 
   }
@@ -890,6 +891,8 @@ class App extends Component {
   }
 
   updateCurrentTime(currentTime, totalTime) {
+    console.log('cur: ' + currentTime);
+    console.log('tot: ' + totalTime);
     this.setState({
       currentTime: currentTime,
       totalTime: totalTime

@@ -36,7 +36,7 @@ html {
     border: 1px solid black;
     padding-top: 10px;
     padding-left: 90px;
-    padding-right:50px;
+    padding-right:55px;
   position: relative;
   max-width: 500px;
   margin: 0 auto;
@@ -66,38 +66,34 @@ html {
 }
 
 .scrub-time {
-  transition: color .1s;
-  bottom: 2px;
-
+  transition: color .2s;
+  bottom: 0px;
 }
 
 .admin-current-time {
   color: BLACK;
   position: relative;
   float:left;
-  bottom: 2px;
-  right: 60px;
+  right: 63px;
 }
 .admin-time-remaining {
   color: GRAY;
   position: relative;
   float:right;
-  bottom: 2px;
-  left: 45px;
+  left: 48px;
 }
 
 .admin-current-time-scrubbing {
   color: #99a7ee;
   position: relative;
   float:left;
-  right: 60px; 
+  right: 63px; 
 }
 .admin-time-remaining-scrubbing {
   color: #99a7ee;
   position: relative;
   float:right;
-  bottom: 2px;
-  left: 45px;  
+  left: 48px;  
 
 }
 
@@ -116,7 +112,7 @@ html {
     height: 14px;
     border-radius: 100%;
     background: #000;
-    transition: transform .25s,background .15s;
+    transition: transform .65s,background .15s;
 }
 
 .admin-scrubber-circle-selected {
@@ -126,7 +122,7 @@ html {
     margin-top:-6px;
     margin-left:-6px;
     background: #99a7ee;
-    transition: height .1s,width .1s,background .1s;
+    transition: height .1s,width .1s,background .2s;
 }
 
 .topnav {
