@@ -96,6 +96,7 @@ const API_SECRET = "YjdiZWIzMjAtMjY0Yy00NDFmLTkzZWEtZTk4ZjBjMmU4NzQ1";
 const ACCESS_KEY = "me@keremc.com";
 const ACCESS_SECRET = "kopekbalik";
 
+var playStarted = false;
 var napsterCurSong = null;
 var Napster = window.Napster;
 
@@ -141,10 +142,11 @@ function VenueInfo({
     return () => {
       if (napsterCurSong != null) {
         updateCurrentTime(0, 0);
+        onSeekDone();
         stopSong();
       }
     }
-  }, [updateCurrentTime]);
+  }, [updateCurrentTime, onSeekDone]);
 
   useEffect(() => {
     if (venue.host_id === userId) {
@@ -167,16 +169,23 @@ function VenueInfo({
 
             Napster.player.on('playtimer', function(e) {
               var data = e.data;
-              if (data.code === 'trackProgress' && data.currentTime > 0) {
+              if (data.code === 'trackProgress') {
+                if (playStarted) {
+                    Napster.player.seek(0);
+                    playStarted = false;
+                  }
+                  if (data.currentTime > 0) {
                 if (napsterCurSong == null || napsterCurSong.toLowerCase() !== data.id.toLowerCase()) {
                   updateCurrentTime(0, 0);
+                  onSeekDone();
                   stopSong();
                 } else {
                   var cur = data.currentTime;
                   var total = data.totalTime;
                   updateCurrentTime(cur, total);                
                 }
-              } 
+              }  
+              }
             })
 
             Napster.player.on('playevent', function(e) {
@@ -185,7 +194,10 @@ function VenueInfo({
                 console.log('Song completed');
                 napsterCurSong = null;        
                 onNextTrack();
-              } 
+              } else if (data.code === 'PlayStarted') {
+                playStarted = true;
+              }
+              console.log(data);
             });            
             Napster.player.on("metadata", console.log);
             Napster.player.on("error", console.log);
@@ -228,6 +240,7 @@ function VenueInfo({
                   onNextTrack();
                 } else {
                   updateCurrentTime(0, 0);
+                  onSeekDone();
                   playSong(venue.current_track_id);
                 }
               } else {
@@ -236,13 +249,25 @@ function VenueInfo({
 
                   if (venue.current_track_id == null) {
                     updateCurrentTime(0, 0);
+                    onSeekDone();
                     stopSong();
                   } else {
                     console.log("Changing song");
                     updateCurrentTime(0, 0);
+                    onSeekDone();
                     playSong(venue.current_track_id);                    
                   }
                 } else {
+                  if (needsSeek) {
+                    var trackId = venue.current_track_id;
+                    var trackInfo = venueTrackInfo[trackId];
+
+                    var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * trackInfo.playbackSeconds;
+
+                    console.log("seek to x: " + scrubX + "; time: " + curTimeScrub);
+                    Napster.player.seek(curTimeScrub);
+                    onSeekDone();
+                  }
                   console.log("Napster cur song: " + napsterCurSong);
                 }
               }
@@ -266,7 +291,7 @@ function VenueInfo({
     } else {
       console.log("This is not your venue!");
     }
-  }, [authData, userId, venue.host_id, venue.current_track_id, onNextTrack, isFetchingNextTrack, updateCurrentTime]);
+  }, [authData, userId, venue.host_id, venue.current_track_id, onNextTrack, isFetchingNextTrack, updateCurrentTime, needsSeek, scrubX, onSeekDone, venueTrackInfo]);
 
   return (
     <div className="venue-info center-text">
@@ -891,8 +916,6 @@ class App extends Component {
   }
 
   updateCurrentTime(currentTime, totalTime) {
-    console.log('cur: ' + currentTime);
-    console.log('tot: ' + totalTime);
     this.setState({
       currentTime: currentTime,
       totalTime: totalTime
