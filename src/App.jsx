@@ -6,7 +6,7 @@ import uuid from "uuid";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faThumbsUp, faThumbsDown } from "@fortawesome/free-regular-svg-icons";
-import { faPlay, faPause } from "@fortawesome/free-solid-svg-icons";
+import { faPlay } from "@fortawesome/free-solid-svg-icons";
 
 import Draggable from 'react-draggable';
 
@@ -35,7 +35,7 @@ function VenueGrid({ venues, onVenueSelect }) {
   return (
     <ul className="venue-list">
       {venues.map(
-        ({ distance, venue_id, venue_name, age_ms, host_name }, index) => {
+        ({ distance, venue_id, venue_name, age_ms, host_name, current_track_album_id }, index) => {
           return (
             <div
               onClick={() => onVenueSelect(venue_id)}
@@ -45,11 +45,20 @@ function VenueGrid({ venues, onVenueSelect }) {
               <h4 className="header-lg center-text">
                 {Number(distance).toFixed(1)} mi.
               </h4>
+              {current_track_album_id == null 
+              ? 
               <img
                 className="now-playing-album-art"
-                src="https://api.napster.com/imageserver/v2/albums/alb.8762246/images/170x170.jpg/"
+                src="img/no-sound.png"
                 alt=""
               />
+              : 
+              <img
+                className="now-playing-album-art"
+                src={"https://api.napster.com/imageserver/v2/albums/" + current_track_album_id + "/images/170x170.jpg/"}
+                alt=""
+              />            
+              }
               <h2 className="center-text">
                 <span className="venue-name">{venue_name}</span>
               </h2>
@@ -174,7 +183,8 @@ function VenueInfo({
                     Napster.player.seek(0);
                     playStarted = false;
                   }
-                  if (data.currentTime > 0) {
+                  
+              } if (data.currentTime > 0) {
                 if (napsterCurSong == null || napsterCurSong.toLowerCase() !== data.id.toLowerCase()) {
                   updateCurrentTime(0, 0);
                   onSeekDone();
@@ -184,8 +194,7 @@ function VenueInfo({
                   var total = data.totalTime;
                   updateCurrentTime(cur, total);                
                 }
-              }  
-              }
+              } 
             })
 
             Napster.player.on('playevent', function(e) {
@@ -772,14 +781,34 @@ class App extends Component {
     });
 
     listVenues(this.props.coords.latitude, this.props.coords.longitude).then(
-      response => {
-        if (this.state.phase === StateVenueGrid) {
-          this.setState({
-            venues: response.venues,
-            venue: null,
-            phase: StateVenueGrid
-          });
-        }
+      venueResponse => {
+        var venues = venueResponse.venues;
+
+        var curTrackIds = venues.map(venue => venue.current_track_id).filter(track => track != null);
+
+        (curTrackIds.length === 0
+          ? Promise.resolve({ tracks: [] })
+          : getTracksMeta(curTrackIds)
+        ).then(
+            metaResponse => {
+              if (this.state.phase === StateVenueGrid) {
+                var trackInfo = {};
+
+                metaResponse.tracks.forEach(trackObj => {
+                  trackInfo[trackObj.id] = trackObj;
+                });
+
+                var metaVenues = venues.map(venue => venue.current_track_id == null ? venue : {...venue, current_track_album_id: trackInfo[venue.current_track_id].albumId});
+                console.log(metaVenues);
+                this.setState({
+                  venues: metaVenues,
+                  venue: null,
+                  phase: StateVenueGrid
+                });
+              }
+            }
+          );
+
       }
     );
   }
