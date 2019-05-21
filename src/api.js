@@ -24,6 +24,11 @@ export function auth(username, password, apiKey, apiSecret) {
 	.then((response) => response.data)
 }
 
+export function updateVenueCurrentTime(venueId, timeProgress, totalTime) {
+	return axios.put(HOST + `/venue/${venueId}?time_progress=${timeProgress}&total_time=${totalTime}`)
+	.then((response) => response.data)
+}
+
 export function venueNextTrack(venueId) {
 	return axios.post(HOST + `/venue/${venueId}/next`)
 	.then((response) => response.data)

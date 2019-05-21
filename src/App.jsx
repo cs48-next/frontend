@@ -25,7 +25,8 @@ import {
   auth,
   venueNextTrack,
   voteskipVenue,
-  deleteVoteskip
+  deleteVoteskip,
+  updateVenueCurrentTime
 } from "./api";
 import { geolocated } from "react-geolocated";
 
@@ -125,6 +126,7 @@ function VenueInfo({
   userId,
   authData,
   venue,
+  getCurrentTrack,
   currentTime,
   totalTime,
   venueTrackInfo,
@@ -144,7 +146,8 @@ function VenueInfo({
   adminProgressBarStart,
   adminProgressBarStop,
   adminProgessBarDrag,
-  updateCurrentTime
+  updateCurrentTime,
+  getTotalTime
 }) {
   
   useEffect(() => {
@@ -160,6 +163,7 @@ function VenueInfo({
   useEffect(() => {
     if (venue.host_id === userId) {
   var setupPlayer = () => {
+        var currentTrack = getCurrentTrack();
         if (!authData.initialized) {
           if (!authData.initializeInProgress) {
             console.log("Initializing player");
@@ -244,19 +248,21 @@ function VenueInfo({
               if (napsterCurSong == null) {
                 console.log("No song currently playing");
 
-                if (venue.current_track_id == null) {
+                if (currentTrack == null) {
                   console.log('Venue has no current_track_id, requesting next song in playlist');
                   onNextTrack();
                 } else {
                   updateCurrentTime(0, 0);
                   onSeekDone();
-                  playSong(venue.current_track_id);
+                  playSong(currentTrack);
                 }
               } else {
-                if (napsterCurSong !== venue.current_track_id) {
+                if (napsterCurSong !== currentTrack) {
                   console.log("Song doesn't match what server sent");
+                  console.log("local: " + napsterCurSong);
+                  console.log("server: " + currentTrack);
 
-                  if (venue.current_track_id == null) {
+                  if (currentTrack == null) {
                     updateCurrentTime(0, 0);
                     onSeekDone();
                     stopSong();
@@ -264,14 +270,12 @@ function VenueInfo({
                     console.log("Changing song");
                     updateCurrentTime(0, 0);
                     onSeekDone();
-                    playSong(venue.current_track_id);                    
+                    playSong(currentTrack);                    
                   }
                 } else {
                   if (needsSeek) {
-                    var trackId = venue.current_track_id;
-                    var trackInfo = venueTrackInfo[trackId];
-
-                    var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * trackInfo.playbackSeconds;
+                    var totalTime = getTotalTime();
+                    var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * totalTime;
 
                     console.log("seek to x: " + scrubX + "; time: " + curTimeScrub);
                     Napster.player.seek(curTimeScrub);
@@ -285,22 +289,15 @@ function VenueInfo({
         }  
   }
 
-
+      console.log("new render");
       setupPlayer();
       var timer = setInterval(setupPlayer, 1000);
 
-      // do Napster.init
-      // run a task every half second
-      // if Napster is initialized and current track is null or songPlaying = false
-      // play new song
-      // songPlaying: true when song starts
-      // songPlaying: false when using event to see if song ends
-      //
       return () => clearInterval(timer);
     } else {
       console.log("This is not your venue!");
     }
-  }, [authData, userId, venue.host_id, venue.current_track_id, onNextTrack, isFetchingNextTrack, updateCurrentTime, needsSeek, scrubX, onSeekDone, venueTrackInfo]);
+  }, [authData, userId, venue.host_id, getCurrentTrack, onNextTrack, isFetchingNextTrack, updateCurrentTime, needsSeek, scrubX, onSeekDone, getTotalTime]);
 
   return (
     <div className="venue-info center-text">
@@ -397,6 +394,11 @@ function VenueInfo({
         />
 
         {(() => {
+          var isAdmin = venue.host_id === userId;
+          if (!isAdmin) {
+            currentTime = venue.time_progress;
+            totalTime = venue.total_time;
+          }                  
           var curTime = Math.min(totalTime, currentTime); 
           if (isScrubbingTrack) {
             var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * trackInfo.playbackSeconds;
@@ -416,13 +418,18 @@ function VenueInfo({
           }
         })()}
 
-
-
           <div className="admin-seekbar"/>
           {(() => {
+              var isAdmin = venue.host_id === userId;
+              if (!isAdmin) {
+                currentTime = venue.time_progress;
+                totalTime = venue.total_time;
+              }
+              var curTime = Math.min(totalTime, currentTime); 
+
               return (
                 <Draggable
-                  position={isScrubbingTrack ? null : {x:(currentTime/(totalTime === 0 ? 1 : totalTime)) * (seekBarRef.current == null ? 0 : (seekBarRef.current.offsetWidth - 20)),y:0}}
+                  position={isScrubbingTrack ? null : {x:(curTime/(totalTime === 0 ? 1 : totalTime)) * (seekBarRef.current == null ? 0 : (seekBarRef.current.offsetWidth - 10)),y:0}}
                   bounds=".admin-progress-seek-container"
                   axis="x"
                   handle=".handle"
@@ -431,7 +438,7 @@ function VenueInfo({
                   onStop={adminProgressBarStop}>
         
 
-                  <div className={"admin-scrubber-circle handle" + (isScrubbingTrack ? " admin-scrubber-circle-selected" : "")}></div>
+                  <div className={"admin-scrubber-circle " + (isAdmin ? "handle" : "scrubber-slow-transition") + (isScrubbingTrack ? " admin-scrubber-circle-selected" : "")}></div>
                 </Draggable>
                 )
           })()}
@@ -627,6 +634,8 @@ class App extends Component {
     this.adminProgressBarStart = this.adminProgressBarStart.bind(this);
     this.adminProgressBarStop = this.adminProgressBarStop.bind(this);
 
+    this.getCurrentTrack = this.getCurrentTrack.bind(this);
+    this.getTotalTime = this.getTotalTime.bind(this);
     this.onSeekDone = this.onSeekDone.bind(this);
   }
 
@@ -642,7 +651,7 @@ class App extends Component {
           this.refreshVenue(this.state.venue.id)
         }
       }
-    }, 2000);
+    }, 700);
 
     if (
       this.state.phase === StateVenueGrid &&
@@ -686,12 +695,18 @@ class App extends Component {
   }
 
   nextTrack() {
+    if (this.state.fetchingNextTrack) {
+      console.log("ERROR ERROR ALREADY FETCHING NEXT TRACK");
+    }
     this.setState({fetchingNextTrack: true});
     console.log('Getting next track')
 
     venueNextTrack(this.state.venue.id).then((venue) => {
       console.log('Next track received');
-      this.refreshVenue(venue.id, () => this.setState({fetchingNextTrack: false, currentTime: 0, totalTime: 0}));
+      this.refreshVenue(venue.id, (receivedVenue) => {
+        console.log("venue refreshed, fetch = false, recv cur: " + receivedVenue.current_track_id);
+        this.setState({fetchingNextTrack: false, currentTime: 0, totalTime: 0});
+      });
     })
 
   }
@@ -799,7 +814,6 @@ class App extends Component {
                 });
 
                 var metaVenues = venues.map(venue => venue.current_track_id == null ? venue : {...venue, current_track_album_id: trackInfo[venue.current_track_id].albumId});
-                console.log(metaVenues);
                 this.setState({
                   venues: metaVenues,
                   venue: null,
@@ -839,7 +853,7 @@ class App extends Component {
             });
           }
             if (callback != null) {
-              callback();
+              callback(venue);
             }       
         })
         .catch(error => {
@@ -949,6 +963,20 @@ class App extends Component {
       currentTime: currentTime,
       totalTime: totalTime
     });
+    updateVenueCurrentTime(this.state.venue.id, currentTime, totalTime)
+      .then(venue => {
+        
+      });
+  }
+
+  getCurrentTrack() {
+    return this.state.venue == null ? null : this.state.venue.current_track_id;
+  }
+
+  getTotalTime() {
+    return (this.state.venue == null || this.state.venueTrackInfo == null) ? null 
+      : this.state.venueTrackInfo[this.state.venue.current_track_id] == null ? null 
+      : this.state.venueTrackInfo[this.state.venue.current_track_id].playbackSeconds;
   }
 
   render() {
@@ -1150,12 +1178,14 @@ class App extends Component {
                     userId={userId}
                     venue={venue}
                     currentTime={currentTime}
+                    getCurrentTrack={this.getCurrentTrack}
                     totalTime={totalTime}
                     authData={authData}
                     isFetchingNextTrack={this.isFetchingNextTrack}
                     venueTrackInfo={venueTrackInfo}
                     onNextTrack={this.nextTrack}
                     isScrubbingTrack={scrubbingTrack}
+                    getTotalTime={this.getTotalTime}
                     scrubX={scrubX}
                     needsSeek={needsSeek}
                     onSeekDone={this.onSeekDone}

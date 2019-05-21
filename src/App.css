@@ -105,14 +105,21 @@ html {
 
 }
 
+.handle {
+  cursor: pointer;
+  transition: transform .65s,background .15s;
+}
+
 .admin-scrubber-circle {
-    cursor: pointer;
     position: relative;
     width: 14px;
     height: 14px;
     border-radius: 100%;
     background: #000;
-    transition: transform .65s,background .15s;
+}
+
+.scrubber-slow-transition {
+    transition: transform 1.1s;
 }
 
 .admin-scrubber-circle-selected {
