@@ -123,11 +123,13 @@ var Napster = window.Napster;
 var seekBarRef = React.createRef();
 function VenueInfo({
   userId,
-  authData,
   venue,
-  currentTime,
+  getCurrentTime,
+
   totalTime,
+  getAuthData,
   venueTrackInfo,
+  getVenueCurrentTrackId,
   isFetchingNextTrack,
   onNextTrack,  
   isScrubbingTrack,
@@ -159,148 +161,145 @@ function VenueInfo({
 
   useEffect(() => {
     if (venue.host_id === userId) {
-  var setupPlayer = () => {
-        if (!authData.initialized) {
-          if (!authData.initializeInProgress) {
-            console.log("Initializing player");
-            authData.initializeInProgress = true;
-            Napster.init({
-              consumerKey: API_KEY,
-              isHTML5Compatible: true,
-              version: "v2.2",
-              player: "player-frame"
-            });
-
-            Napster.player.on("ready", () => {
-              authData.initialized = true; 
-              authData.initializeInProgress = false;
-            });
-
-            Napster.player.on('playtimer', function(e) {
-              var data = e.data;
-              if (data.code === 'trackProgress') {
-                if (playStarted) {
-                    Napster.player.seek(0);
-                    playStarted = false;
-                  }
-                  
-              } if (data.currentTime > 0) {
-                if (napsterCurSong == null || napsterCurSong.toLowerCase() !== data.id.toLowerCase()) {
-                  updateCurrentTime(0, 0);
-                  onSeekDone();
-                  stopSong();
-                } else {
-                  var cur = data.currentTime;
-                  var total = data.totalTime;
-                  updateCurrentTime(cur, total);                
-                }
-              } 
-            })
-
-            Napster.player.on('playevent', function(e) {
-              var data = e.data;
-              if (data.code === 'PlayComplete') {
-                console.log('Song completed');
-                napsterCurSong = null;        
-                onNextTrack();
-              } else if (data.code === 'PlayStarted') {
-                playStarted = true;
-              }
-              console.log(data);
-            });            
-            Napster.player.on("metadata", console.log);
-            Napster.player.on("error", console.log);
-          } else {
-            console.log("Initialization in progress")
-          }
-        } else {
-          if (!authData.authed) {
-            if (authData.tokenLoadInProgress) {
-              console.log("Token load in progress");
-            } else {
-              console.log("Getting auth tokens...");
-              authData.tokenLoadInProgress = true;
-
-              auth(ACCESS_KEY, ACCESS_SECRET, API_KEY, API_SECRET)
-                .then(response => {
-                  authData.tokenLoadInProgress = false;
-
-                  console.log(response.access_token);
-                  console.log(response.refresh_token);
-                  Napster.member.set({
-                    accessToken: response.access_token,
-                    refreshToken: response.refresh_token
-                  });
-                  authData.authed = true;
-                })
-                .catch(error => {
-                  console.log(error);
+      var setupPlayer = () => {
+          var authData = getAuthData();
+          var venueCurTrack = getVenueCurrentTrackId();
+            if (!authData.initialized) {
+              if (!authData.initializeInProgress) {
+                console.log("Initializing player");
+                authData.initializeInProgress = true;
+                Napster.init({
+                  consumerKey: API_KEY,
+                  isHTML5Compatible: true,
+                  version: "v2.2",
+                  player: "player-frame"
                 });
-            }
-          } else {
-            if (isFetchingNextTrack()) {
-              console.log('Fetching next track in progress');
-            } else {
-              if (napsterCurSong == null) {
-                console.log("No song currently playing");
 
-                if (venue.current_track_id == null) {
-                  console.log('Venue has no current_track_id, requesting next song in playlist');
-                  onNextTrack();
+                Napster.player.on("ready", () => {
+                  authData.initialized = true; 
+                  authData.initializeInProgress = false;
+                });
+
+                Napster.player.on('playtimer', function(e) {
+                  var data = e.data;
+                  if (data.code === 'trackProgress') {
+                    if (playStarted) {
+                        Napster.player.seek(0);
+                        playStarted = false;
+                      }
+                      
+                  } if (data.currentTime > 0) {
+                    if (napsterCurSong == null || napsterCurSong.toLowerCase() !== data.id.toLowerCase()) {
+                      updateCurrentTime(0, 0);
+                      onSeekDone();
+                      stopSong();
+                    } else {
+                      var cur = data.currentTime;
+                      var total = data.totalTime;
+                      updateCurrentTime(cur, total);                
+                    }
+                  } 
+                })
+
+                Napster.player.on('playevent', function(e) {
+                  var data = e.data;
+                  if (data.code === 'PlayComplete') {
+                    console.log('Song completed');
+                    napsterCurSong = null;        
+                    onNextTrack();
+                  } else if (data.code === 'PlayStarted') {
+                    playStarted = true;
+                  }
+                  console.log(data);
+                });            
+                Napster.player.on("metadata", console.log);
+                Napster.player.on("error", console.log);
+              } else {
+                console.log("Initialization in progress")
+              }
+            } else {
+              if (!authData.authed) {
+                if (authData.tokenLoadInProgress) {
+                  console.log("Token load in progress");
                 } else {
-                  updateCurrentTime(0, 0);
-                  onSeekDone();
-                  playSong(venue.current_track_id);
+                  console.log("Getting auth tokens...");
+                  authData.tokenLoadInProgress = true;
+
+                  auth(ACCESS_KEY, ACCESS_SECRET, API_KEY, API_SECRET)
+                    .then(response => {
+                      authData.tokenLoadInProgress = false;
+
+                      console.log(response.access_token);
+                      console.log(response.refresh_token);
+                      Napster.member.set({
+                        accessToken: response.access_token,
+                        refreshToken: response.refresh_token
+                      });
+                      authData.authed = true;
+                    })
+                    .catch(error => {
+                      console.log(error);
+                    });
                 }
               } else {
-                if (napsterCurSong !== venue.current_track_id) {
-                  console.log("Song doesn't match what server sent");
-
-                  if (venue.current_track_id == null) {
-                    updateCurrentTime(0, 0);
-                    onSeekDone();
-                    stopSong();
-                  } else {
-                    console.log("Changing song");
-                    updateCurrentTime(0, 0);
-                    onSeekDone();
-                    playSong(venue.current_track_id);                    
-                  }
+                if (isFetchingNextTrack()) {
+                  console.log('Fetching next track in progress');
                 } else {
-                  if (needsSeek) {
-                    var trackId = venue.current_track_id;
-                    var trackInfo = venueTrackInfo[trackId];
+                  if (napsterCurSong == null) {
+                    console.log("No song currently playing");
 
-                    var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * trackInfo.playbackSeconds;
+                    if (venueCurTrack == null) {
+                      console.log('Venue has no current_track_id, requesting next song in playlist');
+                      onNextTrack();
+                    } else {
+                      updateCurrentTime(0, 0);
+                      onSeekDone();
+                      playSong(venueCurTrack);
+                    }
+                  } else {
+                    if (napsterCurSong !== venueCurTrack) {
+                      console.log("Song doesn't match what server sent");
+                      console.log("local: " + napsterCurSong);
+                      console.log("server: " + venueCurTrack);
 
-                    console.log("seek to x: " + scrubX + "; time: " + curTimeScrub);
-                    Napster.player.seek(curTimeScrub);
-                    onSeekDone();
+                      if (venueCurTrack == null) {
+                        console.log("Stopping song;");
+                        updateCurrentTime(0, 0);
+                        onSeekDone();
+                        stopSong();
+                      } else {
+                        console.log("Changing song");
+                        updateCurrentTime(0, 0);
+                        onSeekDone();
+                        playSong(venueCurTrack);                    
+                      }
+                    } else {
+                      if (needsSeek) {
+                        var trackId = venueCurTrack;
+                        var trackInfo = venueTrackInfo[trackId];
+
+                        var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * trackInfo.playbackSeconds;
+
+                        console.log("seek to x: " + scrubX + "; time: " + curTimeScrub);
+                        Napster.player.seek(curTimeScrub);
+                        onSeekDone();
+                      }
+                      console.log("Napster cur song: " + napsterCurSong);
+                    }
                   }
-                  console.log("Napster cur song: " + napsterCurSong);
                 }
               }
-            }
-          }
-        }  
-  }
-
+            }  
+      }
 
       setupPlayer();
       var timer = setInterval(setupPlayer, 1000);
 
-      // do Napster.init
-      // run a task every half second
-      // if Napster is initialized and current track is null or songPlaying = false
-      // play new song
-      // songPlaying: true when song starts
-      // songPlaying: false when using event to see if song ends
-      //
       return () => clearInterval(timer);
     } else {
       console.log("This is not your venue!");
     }
-  }, [authData, userId, venue.host_id, venue.current_track_id, onNextTrack, isFetchingNextTrack, updateCurrentTime, needsSeek, scrubX, onSeekDone, venueTrackInfo]);
+  }, [getAuthData, getVenueCurrentTrackId, isFetchingNextTrack, userId, venue.host_id, onNextTrack, updateCurrentTime, needsSeek, scrubX, onSeekDone, venueTrackInfo]);
 
   return (
     <div className="venue-info center-text">
@@ -397,7 +396,7 @@ function VenueInfo({
         />
 
         {(() => {
-          var curTime = Math.min(totalTime, currentTime); 
+          var curTime = Math.min(totalTime, getCurrentTime()); 
           if (isScrubbingTrack) {
             var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * trackInfo.playbackSeconds;
             return (
@@ -422,7 +421,7 @@ function VenueInfo({
           {(() => {
               return (
                 <Draggable
-                  position={isScrubbingTrack ? null : {x:(currentTime/(totalTime === 0 ? 1 : totalTime)) * (seekBarRef.current == null ? 0 : (seekBarRef.current.offsetWidth - 20)),y:0}}
+                  position={isScrubbingTrack ? null : {x:(getCurrentTime()/(totalTime === 0 ? 1 : totalTime)) * (seekBarRef.current == null ? 0 : (seekBarRef.current.offsetWidth - 20)),y:0}}
                   bounds=".admin-progress-seek-container"
                   axis="x"
                   handle=".handle"
@@ -600,6 +599,8 @@ class App extends Component {
       phase: StateVenueGrid
     };
 
+    this.getAuthData = this.getAuthData.bind(this);
+    this.getVenueCurrentTrackId = this.getVenueCurrentTrackId.bind(this);
     this.isFetchingNextTrack = this.isFetchingNextTrack.bind(this);
     this.nextTrack = this.nextTrack.bind(this);
     this.openCreate = this.openCreate.bind(this);
@@ -621,6 +622,7 @@ class App extends Component {
     this.trackDeleteVoteskip = this.trackDeleteVoteskip.bind(this);
     this.trackQueryInputChange = this.trackQueryInputChange.bind(this);
 
+    this.getCurrentTime = this.getCurrentTime.bind(this);
     this.updateCurrentTime = this.updateCurrentTime.bind(this);
 
     this.adminProgessBarDrag = this.adminProgessBarDrag.bind(this);
@@ -664,6 +666,14 @@ class App extends Component {
     ) {
       this.loadVenues();
     }
+  }
+
+  getAuthData() {
+    return this.state.authData;
+  }
+
+  getVenueCurrentTrackId() {
+    return this.state.venue == null ? null : this.state.venue.current_track_id;
   }
   isFetchingNextTrack() {
     return this.state.fetchingNextTrack;
@@ -799,7 +809,6 @@ class App extends Component {
                 });
 
                 var metaVenues = venues.map(venue => venue.current_track_id == null ? venue : {...venue, current_track_album_id: trackInfo[venue.current_track_id].albumId});
-                console.log(metaVenues);
                 this.setState({
                   venues: metaVenues,
                   venue: null,
@@ -945,21 +954,24 @@ class App extends Component {
   }
 
   updateCurrentTime(currentTime, totalTime) {
+    console.log("setting current time: " + currentTime + ", totalTime: " + totalTime)
     this.setState({
       currentTime: currentTime,
       totalTime: totalTime
     });
   }
 
+  getCurrentTime() {
+    return this.state.currentTime;
+  }
+
   render() {
     const {
       userId,
-      authData,
 
       venues,
       venue,
 
-      currentTime,
       totalTime,
 
       scrubbingTrack,
@@ -1149,11 +1161,11 @@ class App extends Component {
                   <VenueInfo
                     userId={userId}
                     venue={venue}
-                    currentTime={currentTime}
                     totalTime={totalTime}
-                    authData={authData}
+                    getAuthData={this.getAuthData}
                     isFetchingNextTrack={this.isFetchingNextTrack}
                     venueTrackInfo={venueTrackInfo}
+                    getVenueCurrentTrackId={this.getVenueCurrentTrackId}                    
                     onNextTrack={this.nextTrack}
                     isScrubbingTrack={scrubbingTrack}
                     scrubX={scrubX}
@@ -1170,6 +1182,7 @@ class App extends Component {
                     adminProgressBarStop={this.adminProgressBarStop}
                     adminProgessBarDrag={this.adminProgessBarDrag}
                     updateCurrentTime={this.updateCurrentTime}
+                    getCurrentTime={this.getCurrentTime}
                   />
                 );
               default:
