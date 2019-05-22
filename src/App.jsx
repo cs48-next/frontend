@@ -338,18 +338,16 @@ function VenueInfo({
 
   return (
     <div className="venue-info center-text">
-      <div>
-        <span>Venue name: {venue.name}</span>
+      <div className="venue-info-name-container">
+        <span className="venue-info-name">{venue.name}</span>
       </div>
       <div>
-        <span>Venue host: {venue.host_name}</span>
+        <span className="venue-info-label">hosted by </span><span className="venue-info-host">{venue.host_name}</span>
       </div>
       <div>
-        <span>
-          Venue created on:{" "}
-          {moment(venue.created_on).format("MMMM Do YYYY, h:mm a")}
-        </span>
+        <span className="venue-info-label">created on </span><span className="venue-info-time">{moment(venue.created_on).format("MMMM Do YYYY, h:mm a")}</span>
       </div>
+      <hr/>
       <div className="playlist-header">
         <h2 className="playlist-title">Currently playing</h2>
       </div>
@@ -511,7 +509,6 @@ function VenueInfo({
 
         })()}
       </div>
-
 
       <div className="playlist-header">
         <h2 className="playlist-title">Playlist</h2>

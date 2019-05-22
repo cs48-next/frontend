@@ -7,6 +7,50 @@ html {
   z-index: -5;
 }
 
+hr { 
+  display: block;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  margin-left: auto;
+  margin-right: auto;
+  border-style: inset;
+  border-width: 1px;
+} 
+
+.venue-info-name-container {
+  padding-bottom: 10px;
+}
+.venue-info-name {
+  font-size: 40px;
+  color: MAROON;
+  font-weight: bold;
+  font-family: Helvetica;
+
+}
+
+.venue-info-host {
+  font-size: 25px;
+  color: DARKSLATEBLUE;
+  font-weight: bold;
+  font-family: Helvetica;
+}
+
+.venue-info-time {
+  font-size: 20px;
+  color: DARKSLATEBLUE;
+  font-weight: bold;
+  font-family: Helvetica;
+}
+
+.venue-info-name, .venue-info-host, .venue-info-time, .venue-info-label {
+  vertical-align: bottom;
+     line-height: 30px;
+}
+
+.venue-info-label {
+  font-size: 18px;
+}
+
 .track-suggest-frame {
     overflow-y: auto;
    max-height: 60vh;
