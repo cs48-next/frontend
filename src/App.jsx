@@ -6,7 +6,7 @@ import uuid from "uuid";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faThumbsUp, faThumbsDown } from "@fortawesome/free-regular-svg-icons";
-import { faPlay } from "@fortawesome/free-solid-svg-icons";
+import { faPlay, faPause } from "@fortawesome/free-solid-svg-icons";
 
 import Draggable from 'react-draggable';
 
@@ -107,6 +107,7 @@ const ACCESS_KEY = "me@keremc.com";
 const ACCESS_SECRET = "kopekbalik";
 
 var playStarted = false;
+var playInProgress = false;
 var napsterCurSong = null;
 var Napster = window.Napster;
 
@@ -117,7 +118,9 @@ var Napster = window.Napster;
   }
 
   var stopSong = () => {
+    playInProgress = false;
     napsterCurSong = null;
+    playInProgress = false;
     console.log("Stopping song");
     Napster.player.pause();
   }
@@ -126,28 +129,48 @@ function VenueInfo({
   userId,
   authData,
   venue,
+
   getCurrentTrack,
+
   currentTime,
   totalTime,
+
   venueTrackInfo,
+
   isFetchingNextTrack,
   onNextTrack,  
+
   isScrubbingTrack,
   scrubX,
   needsSeek,
   onSeekDone,
+
   onProposeOpen,
   onProposeClose,
+
   onTrackUpvote,
   onTrackDownvote,
   onTrackDeleteVote,
   onTrackVoteskip,
   onTrackDeleteVoteskip,
+
   adminProgressBarStart,
   adminProgressBarStop,
   adminProgessBarDrag,
+
   updateCurrentTime,
-  getTotalTime
+  getTotalTime,
+  getCurrentTime,
+
+  songPlaying,
+
+  preSongPlay,
+  needsSongPlay,
+  afterSongPlay,
+
+  preSongPause,
+  needsSongPause,
+  afterSongPause
 }) {
   
   useEffect(() => {
@@ -186,6 +209,8 @@ function VenueInfo({
                 if (playStarted) {
                     Napster.player.seek(0);
                     playStarted = false;
+                    playInProgress = true;
+                    afterSongPlay();
                   }
                   
               } if (data.currentTime > 0) {
@@ -205,6 +230,7 @@ function VenueInfo({
               var data = e.data;
               if (data.code === 'PlayComplete') {
                 console.log('Song completed');
+                playInProgress = false;
                 napsterCurSong = null;        
                 onNextTrack();
               } else if (data.code === 'PlayStarted') {
@@ -280,6 +306,17 @@ function VenueInfo({
                     console.log("seek to x: " + scrubX + "; time: " + curTimeScrub);
                     Napster.player.seek(curTimeScrub);
                     onSeekDone();
+                    afterSongPlay();
+                  }
+                  if (needsSongPlay) {
+                    console.log("needs song play");
+                    Napster.player.seek(getCurrentTime());
+                    afterSongPlay();
+                  }
+                  if (needsSongPause) {
+                    console.log("needs song pause");
+                    Napster.player.pause();
+                    afterSongPause();
                   }
                   console.log("Napster cur song: " + napsterCurSong);
                 }
@@ -297,7 +334,7 @@ function VenueInfo({
     } else {
       console.log("This is not your venue!");
     }
-  }, [authData, userId, venue.host_id, getCurrentTrack, onNextTrack, isFetchingNextTrack, updateCurrentTime, needsSeek, scrubX, onSeekDone, getTotalTime]);
+  }, [authData, userId, venue.host_id, getCurrentTrack, onNextTrack, isFetchingNextTrack, updateCurrentTime, needsSeek, needsSongPlay, afterSongPlay, needsSongPause, afterSongPause, scrubX, onSeekDone, getTotalTime, getCurrentTime]);
 
   return (
     <div className="venue-info center-text">
@@ -383,15 +420,31 @@ function VenueInfo({
 
       <div className="admin-progress-container">
         <div ref={seekBarRef} className="admin-progress-seek-container">
-        <FontAwesomeIcon
-          className={
-            "admin-play-button"
-          }
-          icon={faPlay}
-          onClick={() =>
-            console.log("play")
-          }
-        />
+        {(() => {
+          var isAdmin = venue.host_id === userId;
+
+          return isAdmin ? (songPlaying && playInProgress 
+          ? 
+          <FontAwesomeIcon
+            className={
+              "admin-pause-button"
+            }
+            icon={faPause}
+            onClick={() =>
+              playInProgress ? preSongPause() : (() => {})()
+            }
+          />
+          :
+          <FontAwesomeIcon
+            className={
+              "admin-play-button"
+            }
+            icon={faPlay}
+            onClick={() => 
+              playInProgress ? preSongPlay() : (() => {})()
+            }
+          />) : null;      
+        })()}
 
         {(() => {
           var isAdmin = venue.host_id === userId;
@@ -604,6 +657,10 @@ class App extends Component {
 
       scrubbingTrack: false,
 
+      songPlaying: false,
+      needsSongPlay: false,
+      needsSongPause: false,
+
       phase: StateVenueGrid
     };
 
@@ -636,7 +693,13 @@ class App extends Component {
 
     this.getCurrentTrack = this.getCurrentTrack.bind(this);
     this.getTotalTime = this.getTotalTime.bind(this);
+    this.getCurrentTime = this.getCurrentTime.bind(this);
     this.onSeekDone = this.onSeekDone.bind(this);
+
+    this.preSongPlay = this.preSongPlay.bind(this);
+    this.preSongPause = this.preSongPause.bind(this);
+    this.afterSongPlay = this.afterSongPlay.bind(this);
+    this.afterSongPause = this.afterSongPause.bind(this);
   }
 
   componentDidMount() {
@@ -959,14 +1022,16 @@ class App extends Component {
   }
 
   updateCurrentTime(currentTime, totalTime) {
-    this.setState({
-      currentTime: currentTime,
-      totalTime: totalTime
-    });
-    updateVenueCurrentTime(this.state.venue.id, currentTime, totalTime)
-      .then(venue => {
-        
+    if (this.state.venue != null) {
+      this.setState({
+        currentTime: currentTime,
+        totalTime: totalTime
       });
+      updateVenueCurrentTime(this.state.venue.id, currentTime, totalTime)
+        .then(venue => {
+          
+        });
+    }
   }
 
   getCurrentTrack() {
@@ -977,6 +1042,26 @@ class App extends Component {
     return (this.state.venue == null || this.state.venueTrackInfo == null) ? null 
       : this.state.venueTrackInfo[this.state.venue.current_track_id] == null ? null 
       : this.state.venueTrackInfo[this.state.venue.current_track_id].playbackSeconds;
+  }
+
+  getCurrentTime() {
+    return this.state.currentTime;
+  }
+
+  preSongPlay() {
+    this.setState({needsSongPlay: true});
+  }
+
+  afterSongPlay() {
+    this.setState({needsSongPlay: false, songPlaying: true});
+  }
+
+  preSongPause() {
+    this.setState({needsSongPause: true});
+  }
+
+  afterSongPause() {
+    this.setState({needsSongPause: false, songPlaying: false});
   }
 
   render() {
@@ -1005,7 +1090,11 @@ class App extends Component {
 
       trackQueryResults,
 
-      phase
+      phase,
+
+      needsSongPause,
+      needsSongPlay,
+      songPlaying
     } = this.state;
 
     if (this.props.coords == null) {
@@ -1186,6 +1275,7 @@ class App extends Component {
                     onNextTrack={this.nextTrack}
                     isScrubbingTrack={scrubbingTrack}
                     getTotalTime={this.getTotalTime}
+                    getCurrentTime={this.getCurrentTime}
                     scrubX={scrubX}
                     needsSeek={needsSeek}
                     onSeekDone={this.onSeekDone}
@@ -1200,6 +1290,13 @@ class App extends Component {
                     adminProgressBarStop={this.adminProgressBarStop}
                     adminProgessBarDrag={this.adminProgessBarDrag}
                     updateCurrentTime={this.updateCurrentTime}
+                    songPlaying={songPlaying}
+                    needsSongPlay={needsSongPlay}
+                    needsSongPause={needsSongPause}
+                    afterSongPause={this.afterSongPause}
+                    afterSongPlay={this.afterSongPlay}
+                    preSongPause={this.preSongPause}
+                    preSongPlay={this.preSongPlay}
                   />
                 );
               default:
