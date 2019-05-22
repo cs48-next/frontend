@@ -347,7 +347,6 @@ function VenueInfo({
       <div>
         <span className="venue-info-label">created on </span><span className="venue-info-time">{moment(venue.created_on).format("MMMM Do YYYY, h:mm a")}</span>
       </div>
-      <hr/>
       <div className="playlist-header">
         <h2 className="playlist-title">Currently playing</h2>
       </div>
