@@ -49,19 +49,17 @@ html {
 }
 
 .admin-pause-button {
-
+  cursor: pointer;
 }
 .admin-play-button {
-
+  cursor: pointer;
 }
 
-.admin-pause-button, .admin-play-button {
-  cursor: pointer;
-
+.admin-pause-button, .admin-play-button, .audience-icon {
   position: relative;
   float:left;
   bottom: 3px;
-  right: 70px;
+  right: 75px;
   font-size: 25px;
 }
 
@@ -74,13 +72,13 @@ html {
   color: BLACK;
   position: relative;
   float:left;
-  right: 61px;
+  right: 63px;
 }
 .admin-time-remaining {
   color: GRAY;
   position: relative;
   float:right;
-  left: 45px;
+  left: 47px;
 }
 
 .admin-current-time-scrubbing {

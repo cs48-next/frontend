@@ -6,7 +6,7 @@ import uuid from "uuid";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faThumbsUp, faThumbsDown } from "@fortawesome/free-regular-svg-icons";
-import { faPlay, faPause } from "@fortawesome/free-solid-svg-icons";
+import { faPlay, faPause, faHeadphones } from "@fortawesome/free-solid-svg-icons";
 
 import Draggable from 'react-draggable';
 
@@ -423,7 +423,7 @@ function VenueInfo({
         {(() => {
           var isAdmin = venue.host_id === userId;
 
-          return isAdmin ? (songPlaying && playInProgress 
+          return isAdmin ? ((songPlaying && playInProgress)
           ? 
           <FontAwesomeIcon
             className={
@@ -443,7 +443,15 @@ function VenueInfo({
             onClick={() => 
               playInProgress ? preSongPlay() : (() => {})()
             }
-          />) : null;      
+          />)
+          : 
+          <FontAwesomeIcon
+            className={
+              "audience-icon"
+            }
+            icon={faHeadphones}
+          />
+          ;      
         })()}
 
         {(() => {
@@ -1213,7 +1221,7 @@ class App extends Component {
               <input
                 type="text"
                 className="venue-create-input"
-                ref={input => (this.inputDjName = input)}
+                ref={input => (this.inputDjName = input)}f
                 id="djName"
                 placeholder="DJ name"
               />
