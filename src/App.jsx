@@ -6,9 +6,13 @@ import uuid from "uuid";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faThumbsUp, faThumbsDown } from "@fortawesome/free-regular-svg-icons";
-import { faPlay, faPause, faHeadphones } from "@fortawesome/free-solid-svg-icons";
+import {
+  faPlay,
+  faPause,
+  faHeadphones
+} from "@fortawesome/free-solid-svg-icons";
 
-import Draggable from 'react-draggable';
+import Draggable from "react-draggable";
 
 import "./App.css";
 
@@ -37,7 +41,17 @@ function VenueGrid({ venues, onVenueSelect }) {
   return (
     <ul className="venue-list">
       {venues.map(
-        ({ distance, venue_id, venue_name, age_ms, host_name, current_track_album_id }, index) => {
+        (
+          {
+            distance,
+            venue_id,
+            venue_name,
+            age_ms,
+            host_name,
+            current_track_album_id
+          },
+          index
+        ) => {
           return (
             <div
               onClick={() => onVenueSelect(venue_id)}
@@ -47,20 +61,23 @@ function VenueGrid({ venues, onVenueSelect }) {
               <h4 className="header-lg center-text">
                 {Number(distance).toFixed(1)} mi.
               </h4>
-              {current_track_album_id == null 
-              ? 
-              <img
-                className="now-playing-album-art"
-                src="img/no-sound.png"
-                alt=""
-              />
-              : 
-              <img
-                className="now-playing-album-art"
-                src={"https://api.napster.com/imageserver/v2/albums/" + current_track_album_id + "/images/170x170.jpg/"}
-                alt=""
-              />            
-              }
+              {current_track_album_id == null ? (
+                <img
+                  className="now-playing-album-art"
+                  src="img/no-sound.png"
+                  alt=""
+                />
+              ) : (
+                <img
+                  className="now-playing-album-art"
+                  src={
+                    "https://api.napster.com/imageserver/v2/albums/" +
+                    current_track_album_id +
+                    "/images/170x170.jpg/"
+                  }
+                  alt=""
+                />
+              )}
               <h2 className="center-text">
                 <span className="venue-name">{venue_name}</span>
               </h2>
@@ -112,20 +129,20 @@ var playInProgress = false;
 var napsterCurSong = null;
 var Napster = window.Napster;
 
-  var playSong = (trackId) => {
-    Napster.player.setVolume(0.0);
-    napsterCurSong = trackId;
-    Napster.player.play(napsterCurSong);     
-    console.log("Playing: " + napsterCurSong);
-  }
+var playSong = trackId => {
+  Napster.player.setVolume(0.0);
+  napsterCurSong = trackId;
+  Napster.player.play(napsterCurSong);
+  console.log("Playing: " + napsterCurSong);
+};
 
-  var stopSong = () => {
-    playInProgress = false;
-    napsterCurSong = null;
-    playInProgress = false;
-    console.log("Stopping song");
-    Napster.player.pause();
-  }
+var stopSong = () => {
+  playInProgress = false;
+  napsterCurSong = null;
+  playInProgress = false;
+  console.log("Stopping song");
+  Napster.player.pause();
+};
 var seekBarRef = React.createRef();
 function VenueInfo({
   userId,
@@ -140,7 +157,7 @@ function VenueInfo({
   venueTrackInfo,
 
   isFetchingNextTrack,
-  onNextTrack,  
+  onNextTrack,
 
   isScrubbingTrack,
   scrubX,
@@ -177,7 +194,6 @@ function VenueInfo({
   openVenueClose,
   closeVenueClose
 }) {
-  
   useEffect(() => {
     return () => {
       if (napsterCurSong != null) {
@@ -185,12 +201,21 @@ function VenueInfo({
         onSeekDone();
         stopSong();
       }
-    }
+    };
   }, [updateCurrentTime, onSeekDone]);
 
   useEffect(() => {
     if (venue.host_id === userId) {
-  var setupPlayer = () => {
+      var setupPlayer = () => {
+
+          if (venue.closed_on != null) {
+                  if (venue.closed_on != null && napsterCurSong != null) {
+                    updateCurrentTime(0, 0);
+                    onSeekDone();
+                    stopSong();                    
+                  }            
+                } else {
+
         var currentTrack = getCurrentTrack();
         if (!authData.initialized) {
           if (!authData.initializeInProgress) {
@@ -204,50 +229,53 @@ function VenueInfo({
             });
 
             Napster.player.on("ready", () => {
-              authData.initialized = true; 
+              authData.initialized = true;
               authData.initializeInProgress = false;
             });
 
-            Napster.player.on('playtimer', function(e) {
+            Napster.player.on("playtimer", function(e) {
               var data = e.data;
-              if (data.code === 'trackProgress') {
+              if (data.code === "trackProgress") {
                 if (playStarted) {
-                    Napster.player.setVolume(1.0);
-                    Napster.player.seek(0);
-                    playStarted = false;
-                    playInProgress = true;
-                    afterSongPlay();
-                  }
-                  
-              } if (data.currentTime > 0) {
-                if (napsterCurSong == null || napsterCurSong.toLowerCase() !== data.id.toLowerCase()) {
+                  Napster.player.setVolume(1.0);
+                  Napster.player.seek(0);
+                  playStarted = false;
+                  playInProgress = true;
+                  afterSongPlay();
+                }
+              }
+              if (data.currentTime > 0) {
+                if (
+                  napsterCurSong == null ||
+                  napsterCurSong.toLowerCase() !== data.id.toLowerCase()
+                ) {
                   updateCurrentTime(0, 0);
                   onSeekDone();
                   stopSong();
                 } else {
                   var cur = data.currentTime;
                   var total = data.totalTime;
-                  updateCurrentTime(cur, total);                
+                  updateCurrentTime(cur, total);
                 }
-              } 
-            })
+              }
+            });
 
-            Napster.player.on('playevent', function(e) {
+            Napster.player.on("playevent", function(e) {
               var data = e.data;
-              if (data.code === 'PlayComplete') {
-                console.log('Song completed');
+              if (data.code === "PlayComplete") {
+                console.log("Song completed");
                 playInProgress = false;
-                napsterCurSong = null;        
+                napsterCurSong = null;
                 onNextTrack();
-              } else if (data.code === 'PlayStarted') {
+              } else if (data.code === "PlayStarted") {
                 playStarted = true;
               }
               console.log(data);
-            });            
+            });
             Napster.player.on("metadata", console.log);
             Napster.player.on("error", console.log);
           } else {
-            console.log("Initialization in progress")
+            console.log("Initialization in progress");
           }
         } else {
           if (!authData.authed) {
@@ -275,13 +303,15 @@ function VenueInfo({
             }
           } else {
             if (isFetchingNextTrack()) {
-              console.log('Fetching next track in progress');
+              console.log("Fetching next track in progress");
             } else {
               if (napsterCurSong == null) {
                 console.log("No song currently playing");
 
                 if (currentTrack == null) {
-                  console.log('Venue has no current_track_id, requesting next song in playlist');
+                  console.log(
+                    "Venue has no current_track_id, requesting next song in playlist"
+                  );
                   onNextTrack();
                 } else {
                   updateCurrentTime(0, 0);
@@ -302,14 +332,21 @@ function VenueInfo({
                     console.log("Changing song");
                     updateCurrentTime(0, 0);
                     onSeekDone();
-                    playSong(currentTrack);                    
+                    playSong(currentTrack);
                   }
                 } else {
                   if (needsSeek) {
                     var totalTime = getTotalTime();
-                    var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * totalTime;
+                    var curTimeScrub =
+                      (scrubX /
+                        (seekBarRef.current == null
+                          ? scrubX
+                          : seekBarRef.current.offsetWidth - 20)) *
+                      totalTime;
 
-                    console.log("seek to x: " + scrubX + "; time: " + curTimeScrub);
+                    console.log(
+                      "seek to x: " + scrubX + "; time: " + curTimeScrub
+                    );
                     Napster.player.seek(curTimeScrub);
                     onSeekDone();
                     afterSongPlay();
@@ -323,14 +360,15 @@ function VenueInfo({
                     console.log("needs song pause");
                     Napster.player.pause();
                     afterSongPause();
-                  }
+                  } 
                   console.log("Napster cur song: " + napsterCurSong);
                 }
               }
             }
           }
-        }  
-  }
+        }
+      }
+      };
 
       console.log("new render");
       setupPlayer();
@@ -340,7 +378,26 @@ function VenueInfo({
     } else {
       console.log("This is not your venue!");
     }
-  }, [authData, userId, venue.host_id, venue.current_track_id, getCurrentTrack, onNextTrack, isFetchingNextTrack, updateCurrentTime, needsSeek, needsSongPlay, afterSongPlay, needsSongPause, afterSongPause, scrubX, onSeekDone, getTotalTime, getCurrentTime]);
+  }, [
+    authData,
+    userId,
+    venue.host_id,
+    venue.closed_on,
+    venue.current_track_id,
+    getCurrentTrack,
+    onNextTrack,
+    isFetchingNextTrack,
+    updateCurrentTime,
+    needsSeek,
+    needsSongPlay,
+    afterSongPlay,
+    needsSongPause,
+    afterSongPause,
+    scrubX,
+    onSeekDone,
+    getTotalTime,
+    getCurrentTime
+  ]);
 
   return (
     <div className="venue-info center-text">
@@ -348,34 +405,43 @@ function VenueInfo({
         <span className="venue-info-name">{venue.name}</span>
       </div>
       <div>
-        <span className="venue-info-label">hosted by </span><span className="venue-info-host">{venue.host_name}</span>
+        <span className="venue-info-label">hosted by </span>
+        <span className="venue-info-host">{venue.host_name}</span>
       </div>
       <div>
-        <span className="venue-info-label">created on </span><span className="venue-info-time">{moment(venue.created_on).format("MMMM Do YYYY, h:mm a")}</span>
+        <span className="venue-info-label">created on </span>
+        <span className="venue-info-time">
+          {moment(venue.created_on).format("MMMM Do YYYY, h:mm a")}
+        </span>
       </div>
 
       {(() => {
-        var isAdmin = venue.host_id === userId;
+        var isAdmin = venue.host_id === userId && venue.closed_on == null;
 
-        return isAdmin 
-        ? 
-        (
-      <div className="playlist-container">
-        <div className="venue-close">
-          <button
-            className="astext venue-close-button"
-            onClick={() => openVenueClose()}
-          >
-            Close venue
-          </button>
-        </div>      
-      </div>
-        )
-        :
-        null;
+        return isAdmin ? (
+          <div className="playlist-container">
+            <div className="venue-close">
+              <button
+                className="astext venue-close-button"
+                onClick={() => openVenueClose()}
+              >
+                Close venue
+              </button>
+            </div>
+          </div>
+        ) : null;
       })()}
 
-
+      {(() => {
+        return (venue.closed_on != null) ? 
+(
+  <div>
+  <h1 className="venue-closed-text">Venue closed</h1>
+  </div>
+  )
+         :
+ (
+    <div>
       <div className="playlist-header">
         <h2 className="playlist-title">Currently playing</h2>
       </div>
@@ -390,151 +456,198 @@ function VenueInfo({
 
             var score = venue.vote_skips.length;
 
-            var voteskipExists = venue.vote_skips.find(vote => vote.user_id === userId);
+            var voteskipExists = venue.vote_skips.find(
+              vote => vote.user_id === userId
+            );
 
-            return (
-<div>
-               <div className="track currently-playing">
-                    <div className="album-art">
-                      <img
-                        alt=""
-                        src={
-                          "https://api.napster.com/imageserver/v2/albums/" +
-                          trackInfo.albumId +
-                          "/images/170x170.jpg"
-                        }
-                      />
-                    </div>
-
-                    <div className="track-info">
-                      <div className="name">{trackInfo.name}</div>
-                      <div className="artist">
-                        <span className="bold artist-name">
-                          {trackInfo.artistName}
-                        </span>
-                        <span className="album-name">
-                          {" "}
-                          - {trackInfo.albumName}
-                        </span>
-                      </div>
-                      <div className="duration">
-                        {trackInfo.playbackSeconds === 0
-                          ? "?:??"
-                          : moment
-                              .utc(trackInfo.playbackSeconds * 1000)
-                              .format("mm:ss")}
-                      </div>
-                      <div className="vote-buttons">
-                        <button
-                          className={
-                            "voteskip-button" +
-                            (voteskipExists ? " voteskip-selected" : "")
-                          }
-                          onClick={() =>
-                            voteskipExists
-                              ? onTrackDeleteVoteskip()
-                              : onTrackVoteskip()
-                          }
-                        >
-                        Skip?
-                        </button>
-                        <div className="voteskip-score">{score}</div>
-                      </div>
-
-                    </div>
-                  </div>
-
-      <div className="admin-progress-container">
-        <div ref={seekBarRef} className="admin-progress-seek-container">
-        {(() => {
-          var isAdmin = venue.host_id === userId;
-
-          return isAdmin ? ((songPlaying && playInProgress)
-          ? 
-          <FontAwesomeIcon
-            className={
-              "admin-pause-button"
-            }
-            icon={faPause}
-            onClick={() =>
-              playInProgress ? preSongPause() : (() => {})()
-            }
-          />
-          :
-          <FontAwesomeIcon
-            className={
-              "admin-play-button"
-            }
-            icon={faPlay}
-            onClick={() => 
-              playInProgress ? preSongPlay() : (() => {})()
-            }
-          />)
-          : 
-          <FontAwesomeIcon
-            className={
-              "audience-icon"
-            }
-            icon={faHeadphones}
-          />
-          ;      
-        })()}
-
-        {(() => {
-          var isAdmin = venue.host_id === userId;
-          if (!isAdmin) {
-            currentTime = venue.time_progress;
-            totalTime = venue.total_time;
-          }                  
-          var curTime = Math.min(totalTime, currentTime); 
-          if (isScrubbingTrack) {
-            var curTimeScrub = (scrubX/(seekBarRef.current == null ? scrubX : (seekBarRef.current.offsetWidth - 20))) * trackInfo.playbackSeconds;
-            return (
-                <div>
-                  <span className="scrub-time admin-current-time-scrubbing">{moment.utc(curTimeScrub * 1000).format("m:ss")}</span>
-                  <span className="scrub-time admin-time-remaining-scrubbing">{"-" + moment.utc( (trackInfo.playbackSeconds - curTimeScrub) * 1000).format("m:ss")}</span>
-                </div>
-                );
-          } else {
             return (
               <div>
-                <span className="scrub-time admin-current-time">{moment.utc(curTime * 1000).format("m:ss")}</span>
-                <span className="scrub-time admin-time-remaining">{"-" + moment.utc(((totalTime === 0 ? trackInfo.playbackSeconds : totalTime) - (curTime)) * 1000).format("m:ss")}</span>
-              </div>
-              );
-          }
-        })()}
-
-          <div className="admin-seekbar"/>
-          {(() => {
-              var isAdmin = venue.host_id === userId;
-              if (!isAdmin) {
-                currentTime = venue.time_progress;
-                totalTime = venue.total_time;
-              }
-              var curTime = Math.min(totalTime, currentTime); 
-
-              return (
-                <Draggable
-                  position={isScrubbingTrack ? null : {x:(curTime/(totalTime === 0 ? 1 : totalTime)) * (seekBarRef.current == null ? 0 : (seekBarRef.current.offsetWidth - 10)),y:0}}
-                  bounds=".admin-progress-seek-container"
-                  axis="x"
-                  handle=".handle"
-                  onStart={adminProgressBarStart}
-                  onDrag={adminProgessBarDrag}
-                  onStop={adminProgressBarStop}>
-        
-
-                  <div className={"admin-scrubber-circle " + (isAdmin ? "handle" : "scrubber-slow-transition") + (isScrubbingTrack ? " admin-scrubber-circle-selected" : "")}></div>
-                </Draggable>
-                )
-          })()}
-        </div>
-      </div>                  
+                <div className="track currently-playing">
+                  <div className="album-art">
+                    <img
+                      alt=""
+                      src={
+                        "https://api.napster.com/imageserver/v2/albums/" +
+                        trackInfo.albumId +
+                        "/images/170x170.jpg"
+                      }
+                    />
                   </div>
-                  )            
-          }
 
+                  <div className="track-info">
+                    <div className="name">{trackInfo.name}</div>
+                    <div className="artist">
+                      <span className="bold artist-name">
+                        {trackInfo.artistName}
+                      </span>
+                      <span className="album-name">
+                        {" "}
+                        - {trackInfo.albumName}
+                      </span>
+                    </div>
+                    <div className="duration">
+                      {trackInfo.playbackSeconds === 0
+                        ? "?:??"
+                        : moment
+                            .utc(trackInfo.playbackSeconds * 1000)
+                            .format("mm:ss")}
+                    </div>
+                    <div className="vote-buttons">
+                      <button
+                        className={
+                          "voteskip-button" +
+                          (voteskipExists ? " voteskip-selected" : "")
+                        }
+                        onClick={() =>
+                          voteskipExists
+                            ? onTrackDeleteVoteskip()
+                            : onTrackVoteskip()
+                        }
+                      >
+                        Skip?
+                      </button>
+                      <div className="voteskip-score">{score}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="admin-progress-container">
+                  <div
+                    ref={seekBarRef}
+                    className="admin-progress-seek-container"
+                  >
+                    {(() => {
+                      var isAdmin = venue.host_id === userId;
+
+                      return isAdmin ? (
+                        songPlaying && playInProgress ? (
+                          <FontAwesomeIcon
+                            className={"admin-pause-button"}
+                            icon={faPause}
+                            onClick={() =>
+                              playInProgress ? preSongPause() : (() => {})()
+                            }
+                          />
+                        ) : (
+                          <FontAwesomeIcon
+                            className={"admin-play-button"}
+                            icon={faPlay}
+                            onClick={() =>
+                              playInProgress ? preSongPlay() : (() => {})()
+                            }
+                          />
+                        )
+                      ) : (
+                        <FontAwesomeIcon
+                          className={"audience-icon"}
+                          icon={faHeadphones}
+                        />
+                      );
+                    })()}
+
+                    {(() => {
+                      var isAdmin = venue.host_id === userId;
+                      if (!isAdmin) {
+                        currentTime = venue.time_progress;
+                        totalTime = venue.total_time;
+                      }
+                      var curTime = Math.min(totalTime, currentTime);
+                      if (isScrubbingTrack) {
+                        var curTimeScrub =
+                          (scrubX /
+                            (seekBarRef.current == null
+                              ? scrubX
+                              : seekBarRef.current.offsetWidth - 20)) *
+                          trackInfo.playbackSeconds;
+                        return (
+                          <div>
+                            <span className="scrub-time admin-current-time-scrubbing">
+                              {moment.utc(curTimeScrub * 1000).format("m:ss")}
+                            </span>
+                            <span className="scrub-time admin-time-remaining-scrubbing">
+                              {"-" +
+                                moment
+                                  .utc(
+                                    (trackInfo.playbackSeconds - curTimeScrub) *
+                                      1000
+                                  )
+                                  .format("m:ss")}
+                            </span>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div>
+                            <span className="scrub-time admin-current-time">
+                              {moment.utc(curTime * 1000).format("m:ss")}
+                            </span>
+                            <span className="scrub-time admin-time-remaining">
+                              {"-" +
+                                moment
+                                  .utc(
+                                    ((totalTime === 0
+                                      ? trackInfo.playbackSeconds
+                                      : totalTime) -
+                                      curTime) *
+                                      1000
+                                  )
+                                  .format("m:ss")}
+                            </span>
+                          </div>
+                        );
+                      }
+                    })()}
+
+                    <div className="admin-seekbar" />
+                    {(() => {
+                      var isAdmin = venue.host_id === userId;
+                      if (!isAdmin) {
+                        currentTime = venue.time_progress;
+                        totalTime = venue.total_time;
+                      }
+                      var curTime = Math.min(totalTime, currentTime);
+
+                      return (
+                        <Draggable
+                          position={
+                            isScrubbingTrack
+                              ? null
+                              : {
+                                  x:
+                                    (curTime /
+                                      (totalTime === 0 ? 1 : totalTime)) *
+                                    (seekBarRef.current == null
+                                      ? 0
+                                      : seekBarRef.current.offsetWidth - 10),
+                                  y: 0
+                                }
+                          }
+                          bounds=".admin-progress-seek-container"
+                          axis="x"
+                          handle=".handle"
+                          onStart={adminProgressBarStart}
+                          onDrag={adminProgessBarDrag}
+                          onStop={adminProgressBarStop}
+                        >
+                          <div
+                            className={
+                              "admin-scrubber-circle " +
+                              (isAdmin
+                                ? "handle"
+                                : "scrubber-slow-transition") +
+                              (isScrubbingTrack
+                                ? " admin-scrubber-circle-selected"
+                                : "")
+                            }
+                          />
+                        </Draggable>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            );
+          }
         })()}
       </div>
 
@@ -642,6 +755,10 @@ function VenueInfo({
           })}
         </ul>
       </div>
+      </div>
+          );
+      })()}
+
     </div>
   );
 }
@@ -709,6 +826,7 @@ class App extends Component {
     this.openVenueClose = this.openVenueClose.bind(this);
     this.closeVenueClose = this.closeVenueClose.bind(this);
     this.closeVenue = this.closeVenue.bind(this);
+    this.closeVenueStats = this.closeVenueStats.bind(this);
 
     this.openPropose = this.openPropose.bind(this);
     this.closePropose = this.closePropose.bind(this);
@@ -744,13 +862,13 @@ class App extends Component {
     this.refreshTask = setInterval(() => {
       if (this.state.phase === StateVenueGrid) {
         if (this.props.coords != null) {
-          this.loadVenues();        
+          this.loadVenues();
         }
       } else if (this.state.phase === StateVenueInfo) {
         if (this.state.venue != null) {
           if (!this.state.venueRefreshInProgress) {
-          console.log("refreshing venue from main task");
-            this.refreshVenue(this.state.venue.id)
+            console.log("refreshing venue from main task");
+            this.refreshVenue(this.state.venue.id);
           }
         }
       }
@@ -766,7 +884,7 @@ class App extends Component {
   }
   componentWillUnmount() {
     clearInterval(this.refreshTask);
-  }  
+  }
   componentDidUpdate(prevProps) {
     if (
       this.state.phase === StateVenueGrid &&
@@ -797,20 +915,29 @@ class App extends Component {
     });
   }
 
+  closeVenueStats() {
+    this.setState({
+      showVenueStats: false
+    });
+  }
+
   nextTrack() {
     if (this.state.fetchingNextTrack) {
       console.log("ERROR ERROR ALREADY FETCHING NEXT TRACK");
     }
     var venueRefreshToken = uuid.v4();
-    this.setState({fetchingNextTrack: true, venueRefreshToken: venueRefreshToken, currentTime: 0, totalTime: 0});
-    console.log('Getting next track')
+    this.setState({
+      fetchingNextTrack: true,
+      venueRefreshToken: venueRefreshToken,
+      currentTime: 0,
+      totalTime: 0
+    });
+    console.log("Getting next track");
 
-    venueNextTrack(this.state.venue.id).then((venue) => {
-      console.log('Next track request complete');
-      this.setState({awaitingNextTrack: true});
-
-    })
-
+    venueNextTrack(this.state.venue.id).then(venue => {
+      console.log("Next track request complete");
+      this.setState({ awaitingNextTrack: true });
+    });
   }
 
   venueCreate(event) {
@@ -862,19 +989,21 @@ class App extends Component {
     var venue = this.state.venue;
     closeVenue(venue.id)
       .then(venue => {
-
+        this.refreshVenue(venue.id, () => {
+          this.setState({
+            showVenueStats: true,
+            closeInProgress: false,
+            askVenueClose: false,
+            closeError: null
+          });          
+        });
       })
       .catch(error => {
+        console.log(error);
         console.log(error.response);
-        this.setState({ closeError: "Failed!" });
-      })
-      .then(() => {
-        this.venueSelected(venue.id);        
-        this.setState({ closeInProgress: false });
-      });    
-
+        this.setState({ closeError: "Failed!", closeInProgress: false });
+      });
   }
-
 
   openPropose() {
     this.setState({
@@ -933,43 +1062,53 @@ class App extends Component {
 
     listVenues(this.props.coords.latitude, this.props.coords.longitude).then(
       venueResponse => {
-        var venues = venueResponse.venues;
+        var venues = venueResponse.venues.filter(v => !v.closed);
 
-        var curTrackIds = venues.map(venue => venue.current_track_id).filter(track => track != null);
+        var curTrackIds = venues
+          .map(venue => venue.current_track_id)
+          .filter(track => track != null);
 
         (curTrackIds.length === 0
           ? Promise.resolve({ tracks: [] })
           : getTracksMeta(curTrackIds)
-        ).then(
-            metaResponse => {
-              if (this.state.phase === StateVenueGrid) {
-                var trackInfo = {};
+        ).then(metaResponse => {
+          if (this.state.phase === StateVenueGrid) {
+            var trackInfo = {};
 
-                metaResponse.tracks.forEach(trackObj => {
-                  trackInfo[trackObj.id] = trackObj;
-                });
+            metaResponse.tracks.forEach(trackObj => {
+              trackInfo[trackObj.id] = trackObj;
+            });
 
-                var metaVenues = venues.map(venue => venue.current_track_id == null ? venue : {...venue, current_track_album_id: trackInfo[venue.current_track_id].albumId});
-                this.setState({
-                  venues: metaVenues,
-                  venue: null,
-                  phase: StateVenueGrid
-                });
-              }
-            }
-          );
-
+            var metaVenues = venues.map(venue =>
+              venue.current_track_id == null
+                ? venue
+                : {
+                    ...venue,
+                    current_track_album_id:
+                      trackInfo[venue.current_track_id].albumId
+                  }
+            );
+            this.setState({
+              venues: metaVenues,
+              venue: null,
+              phase: StateVenueGrid
+            });
+          }
+        });
       }
     );
   }
 
   refreshVenue(venueId, callback) {
-    this.setState({venueRefreshInProgress: true});
+    this.setState({ venueRefreshInProgress: true });
     var trackAwaiting = this.state.awaitingNextTrack;
     fetchVenue(venueId).then(venue => {
       var playlist = venue.playlist;
       var playlistIds = playlist.map(track => track.track_id);
-      var trackIds = venue.current_track_id != null ? [...playlistIds, venue.current_track_id] :  playlistIds;
+      var trackIds =
+        venue.current_track_id != null
+          ? [...playlistIds, venue.current_track_id]
+          : playlistIds;
 
       (trackIds.length === 0
         ? Promise.resolve({ tracks: [] })
@@ -977,7 +1116,6 @@ class App extends Component {
       )
         .then(trackMetaResponse => {
           if (this.state.phase === StateVenueInfo) {
-
             var trackInfo = {};
 
             trackMetaResponse.tracks.forEach(trackObj => {
@@ -986,25 +1124,40 @@ class App extends Component {
 
             this.setState({
               venue: venue,
-              venueTrackInfo: trackInfo,            
+              venueTrackInfo: trackInfo,
               phase: StateVenueInfo
             });
           }
-          console.log("Refresh done, main refresh task: " + (callback == null) + ", track awaiting: " + trackAwaiting +", currently: " + this.state.awaitingNextTrack);
-            if (callback != null) {
-              callback(venue);
-            }       
+          console.log(
+            "Refresh done, main refresh task: " +
+              (callback == null) +
+              ", track awaiting: " +
+              trackAwaiting +
+              ", currently: " +
+              this.state.awaitingNextTrack
+          );
+          if (callback != null) {
+            callback(venue);
+          }
         })
         .catch(error => {
           console.log(error);
           if (callback != null) {
             callback(null);
           }
-        }).then(() => {
-          this.setState({venueRefreshInProgress: false, fetchingNextTrack: trackAwaiting ? false : this.state.fetchingNextTrack, awaitingNextTrack: trackAwaiting ? false : this.state.awaitingNextTrack});
+        })
+        .then(() => {
+          this.setState({
+            venueRefreshInProgress: false,
+            fetchingNextTrack: trackAwaiting
+              ? false
+              : this.state.fetchingNextTrack,
+            awaitingNextTrack: trackAwaiting
+              ? false
+              : this.state.awaitingNextTrack
+          });
         });
     });
-
   }
 
   venueSelected(venueId) {
@@ -1084,22 +1237,28 @@ class App extends Component {
       })
       .catch(error => {
         console.log(error.response);
-      });    
+      });
   }
 
   adminProgressBarStart() {
-    this.setState({scrubbingTrack: true, scrubX: (this.state.currentTime/(this.state.totalTime === 0 ? 1 : this.state.totalTime)) * (seekBarRef.current == null ? 0 : (seekBarRef.current.offsetWidth) - 20)});
+    this.setState({
+      scrubbingTrack: true,
+      scrubX:
+        (this.state.currentTime /
+          (this.state.totalTime === 0 ? 1 : this.state.totalTime)) *
+        (seekBarRef.current == null ? 0 : seekBarRef.current.offsetWidth - 20)
+    });
   }
   adminProgressBarStop() {
-    this.setState({scrubbingTrack: false, needsSeek: true});
+    this.setState({ scrubbingTrack: false, needsSeek: true });
   }
 
   onSeekDone() {
-    this.setState({needsSeek: false});
+    this.setState({ needsSeek: false });
   }
 
   adminProgessBarDrag(e, ui) {
-    this.setState({scrubX: ui.x})
+    this.setState({ scrubX: ui.x });
   }
 
   updateCurrentTime(currentTime, totalTime) {
@@ -1108,10 +1267,9 @@ class App extends Component {
         currentTime: currentTime,
         totalTime: totalTime
       });
-      updateVenueCurrentTime(this.state.venue.id, currentTime, totalTime)
-        .then(venue => {
-          
-        });
+      updateVenueCurrentTime(this.state.venue.id, currentTime, totalTime).then(
+        venue => {}
+      );
     }
   }
 
@@ -1120,9 +1278,12 @@ class App extends Component {
   }
 
   getTotalTime() {
-    return (this.state.venue == null || this.state.venueTrackInfo == null) ? null 
-      : this.state.venueTrackInfo[this.state.venue.current_track_id] == null ? null 
-      : this.state.venueTrackInfo[this.state.venue.current_track_id].playbackSeconds;
+    return this.state.venue == null || this.state.venueTrackInfo == null
+      ? null
+      : this.state.venueTrackInfo[this.state.venue.current_track_id] == null
+      ? null
+      : this.state.venueTrackInfo[this.state.venue.current_track_id]
+          .playbackSeconds;
   }
 
   getCurrentTime() {
@@ -1130,19 +1291,19 @@ class App extends Component {
   }
 
   preSongPlay() {
-    this.setState({needsSongPlay: true});
+    this.setState({ needsSongPlay: true });
   }
 
   afterSongPlay() {
-    this.setState({needsSongPlay: false, songPlaying: true});
+    this.setState({ needsSongPlay: false, songPlaying: true });
   }
 
   preSongPause() {
-    this.setState({needsSongPause: true});
+    this.setState({ needsSongPause: true });
   }
 
   afterSongPause() {
-    this.setState({needsSongPause: false, songPlaying: false});
+    this.setState({ needsSongPause: false, songPlaying: false });
   }
 
   render() {
@@ -1179,7 +1340,8 @@ class App extends Component {
 
       askVenueClose,
       closeInProgress,
-      closeError
+      closeError,
+      showVenueStats
     } = this.state;
 
     if (this.props.coords == null) {
@@ -1287,7 +1449,6 @@ class App extends Component {
               className="venue-close-form"
               onSubmit={this.closeVenue}
             >
-
               {closeInProgress ? (
                 <button className="venue-close-confirm-button button-disabled">
                   Loading
@@ -1302,6 +1463,26 @@ class App extends Component {
             ) : (
               <span className="error-placeholder">_</span>
             )}
+          </Modal>
+
+          <Modal
+            autoFocus={false}
+            isOpen={showVenueStats}
+            onRequestClose={this.closeVenueStats}
+            className="venue-stats-modal center-text"
+            contentLabel="Venue Stats"
+            shouldReturnFocusAfterClose={false}
+          >
+            <h2 className="center-text">Statistics</h2>
+            
+            <div>
+            <div><span className="stat-label">Venue duration: <span className="stat-value">{(venue == null || venue.closed_on == null) ? "" : moment.utc(moment(venue.closed_on).valueOf() - moment(venue.created_on).valueOf()).format("mm:ss")}</span></span></div>
+            <div><span className="stat-label">Tracks played: <span className="stat-value">{venue == null ? "" : venue.stats.total_tracks_played}</span></span></div>
+            <div><span className="stat-label">Tracks skipped: <span className="stat-value">{venue == null ? "" : venue.stats.total_tracks_skipped}</span></span></div>
+            <div><span className="stat-label">Tracks proposed: <span className="stat-value">{venue == null ? "" : venue.stats.total_tracks_proposed}</span></span></div>
+            <div><span className="stat-label">Total upvotes: <span className="stat-value">{venue == null ? "" : venue.stats.total_track_upvotes}</span></span></div>
+            <div><span className="stat-label">Total downvotes: <span className="stat-value">{venue == null ? "" : venue.stats.total_track_downvotes}</span></span></div>
+            </div>
           </Modal>
 
           <Modal

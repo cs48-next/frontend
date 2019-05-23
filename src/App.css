@@ -7,21 +7,32 @@ html {
   z-index: -5;
 }
 
-hr { 
-  display: block;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
-  margin-left: auto;
-  margin-right: auto;
-  border-style: inset;
-  border-width: 1px;
-} 
+
+.venue-closed-text {
+  font-size: 65px;
+}
+
+.stat-label {
+  font-size: 22px;
+  color: DARKSLATEBLUE;
+
+}
+
+.stat-value {
+  font-size: 22px;
+  color: RED;
+
+}
+
 
 .venue-info-name-container {
-  padding-bottom: 10px;
+  padding-top: 30px;
+  padding-bottom: 15px;
 }
+
+
 .venue-info-name {
-  font-size: 40px;
+  font-size: 45px;
   color: TOMATO;
   font-weight: bolder;
   font-family: Helvetica;
@@ -384,7 +395,7 @@ color: rgb(255, 215, 0);
 	  margin: 5px;
 
 }
-.venue-create-modal, .venue-close-modal, .track-propose-modal {
+.venue-create-modal, .venue-close-modal, .track-propose-modal, .venue-stats-modal {
   background-color: LAVENDER;
   margin: 10% auto; 
   padding: 50px;
@@ -395,7 +406,7 @@ color: rgb(255, 215, 0);
   width: 250px; 
   border-radius: 10px;
 }
-.venue-create-modal:focus, .venue-close-modal:focus, .track-propose-modal:focus {
+.venue-create-modal:focus, .venue-close-modal:focus, .track-propose-modal:focus, .venue-stats-modal:focus {
   outline: none;
 }
 
