@@ -26,7 +26,8 @@ import {
   venueNextTrack,
   voteskipVenue,
   deleteVoteskip,
-  updateVenueCurrentTime
+  updateVenueCurrentTime,
+  closeVenue
 } from "./api";
 import { geolocated } from "react-geolocated";
 
@@ -112,6 +113,7 @@ var napsterCurSong = null;
 var Napster = window.Napster;
 
   var playSong = (trackId) => {
+    Napster.player.setVolume(0.0);
     napsterCurSong = trackId;
     Napster.player.play(napsterCurSong);     
     console.log("Playing: " + napsterCurSong);
@@ -170,7 +172,10 @@ function VenueInfo({
 
   preSongPause,
   needsSongPause,
-  afterSongPause
+  afterSongPause,
+
+  openVenueClose,
+  closeVenueClose
 }) {
   
   useEffect(() => {
@@ -207,6 +212,7 @@ function VenueInfo({
               var data = e.data;
               if (data.code === 'trackProgress') {
                 if (playStarted) {
+                    Napster.player.setVolume(1.0);
                     Napster.player.seek(0);
                     playStarted = false;
                     playInProgress = true;
@@ -334,7 +340,7 @@ function VenueInfo({
     } else {
       console.log("This is not your venue!");
     }
-  }, [authData, userId, venue.host_id, getCurrentTrack, onNextTrack, isFetchingNextTrack, updateCurrentTime, needsSeek, needsSongPlay, afterSongPlay, needsSongPause, afterSongPause, scrubX, onSeekDone, getTotalTime, getCurrentTime]);
+  }, [authData, userId, venue.host_id, venue.current_track_id, getCurrentTrack, onNextTrack, isFetchingNextTrack, updateCurrentTime, needsSeek, needsSongPlay, afterSongPlay, needsSongPause, afterSongPause, scrubX, onSeekDone, getTotalTime, getCurrentTime]);
 
   return (
     <div className="venue-info center-text">
@@ -347,6 +353,29 @@ function VenueInfo({
       <div>
         <span className="venue-info-label">created on </span><span className="venue-info-time">{moment(venue.created_on).format("MMMM Do YYYY, h:mm a")}</span>
       </div>
+
+      {(() => {
+        var isAdmin = venue.host_id === userId;
+
+        return isAdmin 
+        ? 
+        (
+      <div className="playlist-container">
+        <div className="venue-close">
+          <button
+            className="astext venue-close-button"
+            onClick={() => openVenueClose()}
+          >
+            Close venue
+          </button>
+        </div>      
+      </div>
+        )
+        :
+        null;
+      })()}
+
+
       <div className="playlist-header">
         <h2 className="playlist-title">Currently playing</h2>
       </div>
@@ -677,6 +706,10 @@ class App extends Component {
     this.loadVenues = this.loadVenues.bind(this);
     this.venueSelected = this.venueSelected.bind(this);
 
+    this.openVenueClose = this.openVenueClose.bind(this);
+    this.closeVenueClose = this.closeVenueClose.bind(this);
+    this.closeVenue = this.closeVenue.bind(this);
+
     this.openPropose = this.openPropose.bind(this);
     this.closePropose = this.closePropose.bind(this);
     this.trackPropose = this.trackPropose.bind(this);
@@ -715,7 +748,10 @@ class App extends Component {
         }
       } else if (this.state.phase === StateVenueInfo) {
         if (this.state.venue != null) {
-          this.refreshVenue(this.state.venue.id)
+          if (!this.state.venueRefreshInProgress) {
+          console.log("refreshing venue from main task");
+            this.refreshVenue(this.state.venue.id)
+          }
         }
       }
     }, 700);
@@ -765,15 +801,14 @@ class App extends Component {
     if (this.state.fetchingNextTrack) {
       console.log("ERROR ERROR ALREADY FETCHING NEXT TRACK");
     }
-    this.setState({fetchingNextTrack: true});
+    var venueRefreshToken = uuid.v4();
+    this.setState({fetchingNextTrack: true, venueRefreshToken: venueRefreshToken, currentTime: 0, totalTime: 0});
     console.log('Getting next track')
 
     venueNextTrack(this.state.venue.id).then((venue) => {
-      console.log('Next track received');
-      this.refreshVenue(venue.id, (receivedVenue) => {
-        console.log("venue refreshed, fetch = false, recv cur: " + receivedVenue.current_track_id);
-        this.setState({fetchingNextTrack: false, currentTime: 0, totalTime: 0});
-      });
+      console.log('Next track request complete');
+      this.setState({awaitingNextTrack: true});
+
     })
 
   }
@@ -806,6 +841,40 @@ class App extends Component {
         this.setState({ creationInProgress: false });
       });
   }
+
+  openVenueClose() {
+    this.setState({
+      askVenueClose: true,
+      closeError: null
+    });
+  }
+
+  closeVenueClose() {
+    this.setState({
+      askVenueClose: false,
+      closeError: null
+    });
+  }
+
+  closeVenue(event) {
+    event.preventDefault();
+    this.setState({ closeInProgress: true });
+    var venue = this.state.venue;
+    closeVenue(venue.id)
+      .then(venue => {
+
+      })
+      .catch(error => {
+        console.log(error.response);
+        this.setState({ closeError: "Failed!" });
+      })
+      .then(() => {
+        this.venueSelected(venue.id);        
+        this.setState({ closeInProgress: false });
+      });    
+
+  }
+
 
   openPropose() {
     this.setState({
@@ -895,6 +964,8 @@ class App extends Component {
   }
 
   refreshVenue(venueId, callback) {
+    this.setState({venueRefreshInProgress: true});
+    var trackAwaiting = this.state.awaitingNextTrack;
     fetchVenue(venueId).then(venue => {
       var playlist = venue.playlist;
       var playlistIds = playlist.map(track => track.track_id);
@@ -919,12 +990,18 @@ class App extends Component {
               phase: StateVenueInfo
             });
           }
+          console.log("Refresh done, main refresh task: " + (callback == null) + ", track awaiting: " + trackAwaiting +", currently: " + this.state.awaitingNextTrack);
             if (callback != null) {
               callback(venue);
             }       
         })
         .catch(error => {
           console.log(error);
+          if (callback != null) {
+            callback(null);
+          }
+        }).then(() => {
+          this.setState({venueRefreshInProgress: false, fetchingNextTrack: trackAwaiting ? false : this.state.fetchingNextTrack, awaitingNextTrack: trackAwaiting ? false : this.state.awaitingNextTrack});
         });
     });
 
@@ -1098,7 +1175,11 @@ class App extends Component {
 
       needsSongPause,
       needsSongPlay,
-      songPlaying
+      songPlaying,
+
+      askVenueClose,
+      closeInProgress,
+      closeError
     } = this.state;
 
     if (this.props.coords == null) {
@@ -1119,7 +1200,7 @@ class App extends Component {
             autoFocus={false}
             isOpen={proposingTrack}
             onRequestClose={this.closePropose}
-            className="venue-create-modal center-text"
+            className="track-propose-modal center-text"
             contentLabel="Propose song"
             shouldReturnFocusAfterClose={false}
           >
@@ -1194,6 +1275,37 @@ class App extends Component {
 
           <Modal
             autoFocus={false}
+            isOpen={askVenueClose}
+            onRequestClose={this.closeVenueClose}
+            className="venue-close-modal center-text"
+            contentLabel="Close Venue"
+            shouldReturnFocusAfterClose={false}
+          >
+            <h2 className="center-text">Close Venue?</h2>
+            <form
+              autoComplete="off"
+              className="venue-close-form"
+              onSubmit={this.closeVenue}
+            >
+
+              {closeInProgress ? (
+                <button className="venue-close-confirm-button button-disabled">
+                  Loading
+                </button>
+              ) : (
+                <button className="venue-close-confirm-button">Confirm</button>
+              )}
+            </form>
+
+            {closeError != null ? (
+              <span className="error">{closeError}</span>
+            ) : (
+              <span className="error-placeholder">_</span>
+            )}
+          </Modal>
+
+          <Modal
+            autoFocus={false}
             isOpen={creatingVenue}
             onRequestClose={this.closeCreate}
             className="venue-create-modal center-text"
@@ -1217,7 +1329,7 @@ class App extends Component {
               <input
                 type="text"
                 className="venue-create-input"
-                ref={input => (this.inputDjName = input)}f
+                ref={input => (this.inputDjName = input)}
                 id="djName"
                 placeholder="DJ name"
               />
@@ -1284,6 +1396,8 @@ class App extends Component {
                     needsSeek={needsSeek}
                     onSeekDone={this.onSeekDone}
                     onProposeOpen={this.openPropose}
+                    openVenueClose={this.openVenueClose}
+                    closeVenueClose={this.closeVenueClose}
                     onProposeClose={this.closePropose}
                     onTrackUpvote={this.trackUpvote}
                     onTrackDownvote={this.trackDownvote}

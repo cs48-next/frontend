@@ -356,7 +356,7 @@ color: rgb(255, 215, 0);
 .venue-create-form {
 	text-align:center;
 }
-.venue-create-button {
+.venue-create-button, .venue-close-confirm-button {
   background-color: LIGHTSTEELBLUE;
 
   color: black;
@@ -368,11 +368,8 @@ color: rgb(255, 215, 0);
   border-radius: 4px;
   text-align: center;
 }
-.venue-create-button:focus {
-	outline: none;
-}
 
-.venue-create-modal:focus {
+.venue-create-button:focus, .venue-close-confirm-button:focus {
   outline: none;
 }
 
@@ -387,7 +384,7 @@ color: rgb(255, 215, 0);
 	  margin: 5px;
 
 }
-.venue-create-modal {
+.venue-create-modal, .venue-close-modal, .track-propose-modal {
   background-color: LAVENDER;
   margin: 10% auto; 
   padding: 50px;
@@ -397,8 +394,11 @@ color: rgb(255, 215, 0);
   border: 1px solid BLACK;
   width: 250px; 
   border-radius: 10px;
-
 }
+.venue-create-modal:focus, .venue-close-modal:focus, .track-propose-modal:focus {
+  outline: none;
+}
+
 
 .playlist-header {
 }
@@ -406,6 +406,16 @@ color: rgb(255, 215, 0);
   text-align: center;
   padding-top: 20px;
   margin: 0px;
+}
+
+.venue-close {
+  overflow: hidden;
+}
+.venue-close-button {
+  position: relative;
+float: left;
+margin:0;
+padding:0;
 }
 
 .playlist-propose {

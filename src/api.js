@@ -54,6 +54,11 @@ export function createVenue(venue_name, dj_name, host_id, latitude, longitude) {
 	}).then((response) => response.data)
 }
 
+export function closeVenue(venue_id) {
+	return axios.delete(HOST + `/venue/${venue_id}`)
+		.then((response) => response.data)
+}
+
 export function proposeTrack(venue_id, track_id) {
 	return axios.put(HOST + `/track/${venue_id}/${track_id}`)
 		.then((response) => response.data)
