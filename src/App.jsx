@@ -139,7 +139,7 @@ var playSong = trackId => {
 var stopSong = () => {
   playInProgress = false;
   napsterCurSong = null;
-  playStarted = false;
+  playInProgress = false;
   console.log("Stopping song");
   Napster.player.pause();
 };
@@ -207,166 +207,167 @@ function VenueInfo({
   useEffect(() => {
     if (venue.host_id === userId) {
       var setupPlayer = () => {
-        if (venue.closed_on != null) {
-          if (venue.closed_on != null && napsterCurSong != null) {
-            updateCurrentTime(0, 0);
-            onSeekDone();
-            stopSong();
+
+          if (venue.closed_on != null) {
+                  if (venue.closed_on != null && napsterCurSong != null) {
+                    updateCurrentTime(0, 0);
+                    onSeekDone();
+                    stopSong();                    
+                  }            
+                } else {
+
+        var currentTrack = getCurrentTrack();
+        if (!authData.initialized) {
+          if (!authData.initializeInProgress) {
+            console.log("Initializing player");
+            authData.initializeInProgress = true;
+            Napster.init({
+              consumerKey: API_KEY,
+              isHTML5Compatible: true,
+              version: "v2.2",
+              player: "player-frame"
+            });
+
+            Napster.player.on("ready", () => {
+              authData.initialized = true;
+              authData.initializeInProgress = false;
+            });
+
+            Napster.player.on("playtimer", function(e) {
+              var data = e.data;
+              if (data.code === "trackProgress") {
+                if (playStarted) {
+                  Napster.player.setVolume(1.0);
+                  Napster.player.seek(0);
+                  playStarted = false;
+                  playInProgress = true;
+                  afterSongPlay();
+                }
+              }
+              if (data.currentTime > 0) {
+                if (
+                  napsterCurSong == null ||
+                  napsterCurSong.toLowerCase() !== data.id.toLowerCase()
+                ) {
+                  updateCurrentTime(0, 0);
+                  onSeekDone();
+                  stopSong();
+                } else {
+                  var cur = data.currentTime;
+                  var total = data.totalTime;
+                  updateCurrentTime(cur, total);
+                }
+              }
+            });
+
+            Napster.player.on("playevent", function(e) {
+              var data = e.data;
+              if (data.code === "PlayComplete") {
+                console.log("Song completed");
+                playInProgress = false;
+                napsterCurSong = null;
+                onNextTrack();
+              } else if (data.code === "PlayStarted") {
+                playStarted = true;
+              }
+              console.log(data);
+            });
+            Napster.player.on("metadata", console.log);
+            Napster.player.on("error", console.log);
+          } else {
+            console.log("Initialization in progress");
           }
         } else {
-          var currentTrack = getCurrentTrack();
-          if (!authData.initialized) {
-            if (!authData.initializeInProgress) {
-              console.log("Initializing player");
-              authData.initializeInProgress = true;
-              Napster.init({
-                consumerKey: API_KEY,
-                isHTML5Compatible: true,
-                version: "v2.2",
-                player: "player-frame"
-              });
+          if (!authData.authed) {
+            if (authData.tokenLoadInProgress) {
+              console.log("Token load in progress");
+            } else {
+              console.log("Getting auth tokens...");
+              authData.tokenLoadInProgress = true;
 
-              Napster.player.on("ready", () => {
-                authData.initialized = true;
-                authData.initializeInProgress = false;
-              });
+              auth(ACCESS_KEY, ACCESS_SECRET, API_KEY, API_SECRET)
+                .then(response => {
+                  authData.tokenLoadInProgress = false;
 
-              Napster.player.on("playtimer", function(e) {
-                var data = e.data;
-                if (data.code === "trackProgress") {
-                  if (playStarted) {
-                    Napster.player.setVolume(1.0);
-                    Napster.player.seek(0);
-                    playStarted = false;
-                    playInProgress = true;
-                    afterSongPlay();
-                  }
+                  console.log(response.access_token);
+                  console.log(response.refresh_token);
+                  Napster.member.set({
+                    accessToken: response.access_token,
+                    refreshToken: response.refresh_token
+                  });
+                  authData.authed = true;
+                })
+                .catch(error => {
+                  console.log(error);
+                });
+            }
+          } else {
+            if (isFetchingNextTrack()) {
+              console.log("Fetching next track in progress");
+            } else {
+              if (napsterCurSong == null) {
+                console.log("No song currently playing");
+
+                if (currentTrack == null) {
+                  console.log(
+                    "Venue has no current_track_id, requesting next song in playlist"
+                  );
+                  onNextTrack();
+                } else {
+                  updateCurrentTime(0, 0);
+                  onSeekDone();
+                  playSong(currentTrack);
                 }
-                if (data.currentTime > 0) {
-                  if (
-                    napsterCurSong == null ||
-                    napsterCurSong.toLowerCase() !== data.id.toLowerCase()
-                  ) {
+              } else {
+                if (napsterCurSong !== currentTrack) {
+                  console.log("Song doesn't match what server sent");
+                  console.log("local: " + napsterCurSong);
+                  console.log("server: " + currentTrack);
+
+                  if (currentTrack == null) {
                     updateCurrentTime(0, 0);
                     onSeekDone();
                     stopSong();
                   } else {
-                    var cur = data.currentTime;
-                    var total = data.totalTime;
-                    updateCurrentTime(cur, total);
-                  }
-                }
-              });
-
-              Napster.player.on("playevent", function(e) {
-                var data = e.data;
-                if (data.code === "PlayComplete") {
-                  console.log("Song completed");
-                  playInProgress = false;
-                  napsterCurSong = null;
-                  onNextTrack();
-                } else if (data.code === "PlayStarted") {
-                  playStarted = true;
-                }
-                console.log(data);
-              });
-              Napster.player.on("metadata", console.log);
-              Napster.player.on("error", console.log);
-            } else {
-              console.log("Initialization in progress");
-            }
-          } else {
-            if (!authData.authed) {
-              if (authData.tokenLoadInProgress) {
-                console.log("Token load in progress");
-              } else {
-                console.log("Getting auth tokens...");
-                authData.tokenLoadInProgress = true;
-
-                auth(ACCESS_KEY, ACCESS_SECRET, API_KEY, API_SECRET)
-                  .then(response => {
-                    authData.tokenLoadInProgress = false;
-
-                    console.log(response.access_token);
-                    console.log(response.refresh_token);
-                    Napster.member.set({
-                      accessToken: response.access_token,
-                      refreshToken: response.refresh_token
-                    });
-                    authData.authed = true;
-                  })
-                  .catch(error => {
-                    console.log(error);
-                  });
-              }
-            } else {
-              if (isFetchingNextTrack()) {
-                console.log("Fetching next track in progress");
-              } else {
-                if (napsterCurSong == null) {
-                  console.log("No song currently playing");
-
-                  if (currentTrack == null) {
-                    console.log(
-                      "Venue has no current_track_id, requesting next song in playlist"
-                    );
-                    onNextTrack();
-                  } else {
+                    console.log("Changing song");
                     updateCurrentTime(0, 0);
                     onSeekDone();
                     playSong(currentTrack);
                   }
                 } else {
-                  if (napsterCurSong !== currentTrack) {
-                    console.log("Song doesn't match what server sent");
-                    console.log("local: " + napsterCurSong);
-                    console.log("server: " + currentTrack);
+                  if (needsSeek) {
+                    var totalTime = getTotalTime();
+                    var curTimeScrub =
+                      (scrubX /
+                        (seekBarRef.current == null
+                          ? scrubX
+                          : seekBarRef.current.offsetWidth - 20)) *
+                      totalTime;
 
-                    if (currentTrack == null) {
-                      updateCurrentTime(0, 0);
-                      onSeekDone();
-                      stopSong();
-                    } else {
-                      console.log("Changing song");
-                      updateCurrentTime(0, 0);
-                      onSeekDone();
-                      playInProgress = false;
-                      playSong(currentTrack);
-                    }
-                  } else {
-                    if (needsSeek) {
-                      var totalTime = getTotalTime();
-                      var curTimeScrub =
-                        (scrubX /
-                          (seekBarRef.current == null
-                            ? scrubX
-                            : seekBarRef.current.offsetWidth - 20)) *
-                        totalTime;
-
-                      console.log(
-                        "seek to x: " + scrubX + "; time: " + curTimeScrub
-                      );
-                      Napster.player.seek(curTimeScrub);
-                      onSeekDone();
-                      afterSongPlay();
-                    }
-                    if (needsSongPlay) {
-                      console.log("needs song play");
-                      Napster.player.seek(getCurrentTime());
-                      afterSongPlay();
-                    }
-                    if (needsSongPause) {
-                      console.log("needs song pause");
-                      Napster.player.pause();
-                      afterSongPause();
-                    }
-                    console.log("Napster cur song: " + napsterCurSong);
+                    console.log(
+                      "seek to x: " + scrubX + "; time: " + curTimeScrub
+                    );
+                    Napster.player.seek(curTimeScrub);
+                    onSeekDone();
+                    afterSongPlay();
                   }
+                  if (needsSongPlay) {
+                    console.log("needs song play");
+                    Napster.player.seek(getCurrentTime());
+                    afterSongPlay();
+                  }
+                  if (needsSongPause) {
+                    console.log("needs song pause");
+                    Napster.player.pause();
+                    afterSongPause();
+                  } 
+                  console.log("Napster cur song: " + napsterCurSong);
                 }
               }
             }
           }
         }
+      }
       };
 
       console.log("new render");
@@ -432,338 +433,332 @@ function VenueInfo({
       })()}
 
       {(() => {
-        return venue.closed_on != null ? (
-          <div>
-            <h1 className="venue-closed-text">Venue closed</h1>
-          </div>
-        ) : (
-          <div>
-            <div className="playlist-header">
-              <h2 className="playlist-title">Currently playing</h2>
-            </div>
+        return (venue.closed_on != null) ? 
+(
+  <div>
+  <h1 className="venue-closed-text">Venue closed</h1>
+  </div>
+  )
+         :
+ (
+    <div>
+      <div className="playlist-header">
+        <h2 className="playlist-title">Currently playing</h2>
+      </div>
 
-            <div className="playlist-container">
-              {(() => {
-                if (venue.current_track_id == null) {
-                  return null;
-                } else {
-                  var trackId = venue.current_track_id;
-                  var trackInfo = venueTrackInfo[trackId];
+      <div className="playlist-container">
+        {(() => {
+          if (venue.current_track_id == null) {
+            return null;
+          } else {
+            var trackId = venue.current_track_id;
+            var trackInfo = venueTrackInfo[trackId];
 
-                  var score = venue.vote_skips.length;
+            var score = venue.vote_skips.length;
 
-                  var voteskipExists = venue.vote_skips.find(
-                    vote => vote.user_id === userId
-                  );
+            var voteskipExists = venue.vote_skips.find(
+              vote => vote.user_id === userId
+            );
 
-                  return (
-                    <div>
-                      <div className="track currently-playing">
-                        <div className="album-art">
-                          <img
-                            alt=""
-                            src={
-                              "https://api.napster.com/imageserver/v2/albums/" +
-                              trackInfo.albumId +
-                              "/images/170x170.jpg"
+            return (
+              <div>
+                <div className="track currently-playing">
+                  <div className="album-art">
+                    <img
+                      alt=""
+                      src={
+                        "https://api.napster.com/imageserver/v2/albums/" +
+                        trackInfo.albumId +
+                        "/images/170x170.jpg"
+                      }
+                    />
+                  </div>
+
+                  <div className="track-info">
+                    <div className="name">{trackInfo.name}</div>
+                    <div className="artist">
+                      <span className="bold artist-name">
+                        {trackInfo.artistName}
+                      </span>
+                      <span className="album-name">
+                        {" "}
+                        - {trackInfo.albumName}
+                      </span>
+                    </div>
+                    <div className="duration">
+                      {trackInfo.playbackSeconds === 0
+                        ? "?:??"
+                        : moment
+                            .utc(trackInfo.playbackSeconds * 1000)
+                            .format("mm:ss")}
+                    </div>
+                    <div className="vote-buttons">
+                      <button
+                        className={
+                          "voteskip-button" +
+                          (voteskipExists ? " voteskip-selected" : "")
+                        }
+                        onClick={() =>
+                          voteskipExists
+                            ? onTrackDeleteVoteskip()
+                            : onTrackVoteskip()
+                        }
+                      >
+                        Skip?
+                      </button>
+                      <div className="voteskip-score">{score}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="admin-progress-container">
+                  <div
+                    ref={seekBarRef}
+                    className="admin-progress-seek-container"
+                  >
+                    {(() => {
+                      var isAdmin = venue.host_id === userId;
+
+                      return isAdmin ? (
+                        songPlaying && playInProgress ? (
+                          <FontAwesomeIcon
+                            className={"admin-pause-button"}
+                            icon={faPause}
+                            onClick={() =>
+                              playInProgress ? preSongPause() : (() => {})()
                             }
                           />
-                        </div>
+                        ) : (
+                          <FontAwesomeIcon
+                            className={"admin-play-button"}
+                            icon={faPlay}
+                            onClick={() =>
+                              playInProgress ? preSongPlay() : (() => {})()
+                            }
+                          />
+                        )
+                      ) : (
+                        <FontAwesomeIcon
+                          className={"audience-icon"}
+                          icon={faHeadphones}
+                        />
+                      );
+                    })()}
 
-                        <div className="track-info">
-                          <div className="name">{trackInfo.name}</div>
-                          <div className="artist">
-                            <span className="bold artist-name">
-                              {trackInfo.artistName}
+                    {(() => {
+                      var isAdmin = venue.host_id === userId;
+                      if (!isAdmin) {
+                        currentTime = venue.time_progress;
+                        totalTime = venue.total_time;
+                      }
+                      var curTime = Math.min(totalTime, currentTime);
+                      if (isScrubbingTrack) {
+                        var curTimeScrub =
+                          (scrubX /
+                            (seekBarRef.current == null
+                              ? scrubX
+                              : seekBarRef.current.offsetWidth - 20)) *
+                          trackInfo.playbackSeconds;
+                        return (
+                          <div>
+                            <span className="scrub-time admin-current-time-scrubbing">
+                              {moment.utc(curTimeScrub * 1000).format("m:ss")}
                             </span>
-                            <span className="album-name">
-                              {" "}
-                              - {trackInfo.albumName}
+                            <span className="scrub-time admin-time-remaining-scrubbing">
+                              {"-" +
+                                moment
+                                  .utc(
+                                    (trackInfo.playbackSeconds - curTimeScrub) *
+                                      1000
+                                  )
+                                  .format("m:ss")}
                             </span>
                           </div>
-                          <div className="duration">
-                            {trackInfo.playbackSeconds === 0
-                              ? "?:??"
-                              : moment
-                                  .utc(trackInfo.playbackSeconds * 1000)
-                                  .format("mm:ss")}
+                        );
+                      } else {
+                        return (
+                          <div>
+                            <span className="scrub-time admin-current-time">
+                              {moment.utc(curTime * 1000).format("m:ss")}
+                            </span>
+                            <span className="scrub-time admin-time-remaining">
+                              {"-" +
+                                moment
+                                  .utc(
+                                    ((totalTime === 0
+                                      ? trackInfo.playbackSeconds
+                                      : totalTime) -
+                                      curTime) *
+                                      1000
+                                  )
+                                  .format("m:ss")}
+                            </span>
                           </div>
-                          <div className="vote-buttons">
-                            <button
-                              className={
-                                "voteskip-button" +
-                                (voteskipExists ? " voteskip-selected" : "")
-                              }
-                              onClick={() =>
-                                voteskipExists
-                                  ? onTrackDeleteVoteskip()
-                                  : onTrackVoteskip()
-                              }
-                            >
-                              Skip?
-                            </button>
-                            <div className="voteskip-score">{score}</div>
-                          </div>
-                        </div>
+                        );
+                      }
+                    })()}
+
+                    <div className="admin-seekbar" />
+                    {(() => {
+                      var isAdmin = venue.host_id === userId;
+                      if (!isAdmin) {
+                        currentTime = venue.time_progress;
+                        totalTime = venue.total_time;
+                      }
+                      var curTime = Math.min(totalTime, currentTime);
+
+                      return (
+                        <Draggable
+                          position={
+                            isScrubbingTrack
+                              ? null
+                              : {
+                                  x:
+                                    (curTime /
+                                      (totalTime === 0 ? 1 : totalTime)) *
+                                    (seekBarRef.current == null
+                                      ? 0
+                                      : seekBarRef.current.offsetWidth - 10),
+                                  y: 0
+                                }
+                          }
+                          bounds=".admin-progress-seek-container"
+                          axis="x"
+                          handle=".handle"
+                          onStart={adminProgressBarStart}
+                          onDrag={adminProgessBarDrag}
+                          onStop={adminProgressBarStop}
+                        >
+                          <div
+                            className={
+                              "admin-scrubber-circle " +
+                              (isAdmin
+                                ? "handle"
+                                : "scrubber-slow-transition") +
+                              (isScrubbingTrack
+                                ? " admin-scrubber-circle-selected"
+                                : "")
+                            }
+                          />
+                        </Draggable>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+        })()}
+      </div>
+
+      <div className="playlist-header">
+        <h2 className="playlist-title">Playlist</h2>
+      </div>
+
+      <div className="playlist-container">
+        <div className="playlist-propose">
+          <button
+            className="astext playlist-propose-button"
+            onClick={() => onProposeOpen()}
+          >
+            Propose song
+          </button>
+        </div>
+
+        <ul className="playlist">
+          {venue.playlist.map((track, index) => {
+            var ordinal = index + 1;
+            var trackId = track.track_id;
+            var trackInfo = venueTrackInfo[trackId];
+
+            var userVote = track.votes.find(vote => vote.user_id === userId);
+            var upvoteExists = userVote != null && userVote.upvote;
+            var downvoteExists = userVote != null && !userVote.upvote;
+
+            if (trackInfo != null) {
+              var score = track.votes
+                .map(vote => {
+                  return vote.upvote ? 1 : -1;
+                })
+                .reduce((a, b) => a + b, 0);
+              return (
+                <li className="track-listing" key={track.track_id}>
+                  <div className="track">
+                    <div className="track-place">#{ordinal}</div>
+                    <div className="album-art">
+                      <img
+                        alt=""
+                        src={
+                          "https://api.napster.com/imageserver/v2/albums/" +
+                          trackInfo.albumId +
+                          "/images/170x170.jpg"
+                        }
+                      />
+                    </div>
+
+                    <div className="track-info">
+                      <div className="name">{trackInfo.name}</div>
+                      <div className="artist">
+                        <span className="bold artist-name">
+                          {trackInfo.artistName}
+                        </span>
+                        <span className="album-name">
+                          {" "}
+                          - {trackInfo.albumName}
+                        </span>
+                      </div>
+                      <div className="duration">
+                        {trackInfo.playbackSeconds === 0
+                          ? "?:??"
+                          : moment
+                              .utc(trackInfo.playbackSeconds * 1000)
+                              .format("mm:ss")}
                       </div>
 
-                      <div className="admin-progress-container">
-                        <div
-                          ref={seekBarRef}
-                          className="admin-progress-seek-container"
-                        >
-                          {(() => {
-                            var isAdmin = venue.host_id === userId;
+                      <div className="vote-buttons">
+                        <FontAwesomeIcon
+                          className={
+                            "downvote-button" +
+                            (downvoteExists ? " downvote-selected" : "")
+                          }
+                          icon={faThumbsDown}
+                          onClick={() =>
+                            downvoteExists
+                              ? onTrackDeleteVote(trackId)
+                              : onTrackDownvote(trackId)
+                          }
+                        />
+                        <div className="vote-score">{score}</div>
 
-                            return isAdmin ? (
-                              songPlaying && playInProgress ? (
-                                <FontAwesomeIcon
-                                  className={"admin-pause-button"}
-                                  icon={faPause}
-                                  onClick={() =>
-                                    playInProgress
-                                      ? preSongPause()
-                                      : (() => {})()
-                                  }
-                                />
-                              ) : (
-                                <FontAwesomeIcon
-                                  className={"admin-play-button"}
-                                  icon={faPlay}
-                                  onClick={() =>
-                                    playInProgress
-                                      ? preSongPlay()
-                                      : (() => {})()
-                                  }
-                                />
-                              )
-                            ) : (
-                              <FontAwesomeIcon
-                                className={"audience-icon"}
-                                icon={faHeadphones}
-                              />
-                            );
-                          })()}
-
-                          {(() => {
-                            var isAdmin = venue.host_id === userId;
-                            if (!isAdmin) {
-                              currentTime = venue.time_progress;
-                              totalTime = venue.total_time;
-                            }
-                            var curTime = Math.min(totalTime, currentTime);
-                            if (isScrubbingTrack) {
-                              var curTimeScrub =
-                                (scrubX /
-                                  (seekBarRef.current == null
-                                    ? scrubX
-                                    : seekBarRef.current.offsetWidth - 20)) *
-                                trackInfo.playbackSeconds;
-                              return (
-                                <div>
-                                  <span className="scrub-time admin-current-time-scrubbing">
-                                    {moment
-                                      .utc(curTimeScrub * 1000)
-                                      .format("m:ss")}
-                                  </span>
-                                  <span className="scrub-time admin-time-remaining-scrubbing">
-                                    {"-" +
-                                      moment
-                                        .utc(
-                                          (trackInfo.playbackSeconds -
-                                            curTimeScrub) *
-                                            1000
-                                        )
-                                        .format("m:ss")}
-                                  </span>
-                                </div>
-                              );
-                            } else {
-                              return (
-                                <div>
-                                  <span className="scrub-time admin-current-time">
-                                    {moment.utc(curTime * 1000).format("m:ss")}
-                                  </span>
-                                  <span className="scrub-time admin-time-remaining">
-                                    {"-" +
-                                      moment
-                                        .utc(
-                                          ((totalTime === 0
-                                            ? trackInfo.playbackSeconds
-                                            : totalTime) -
-                                            curTime) *
-                                            1000
-                                        )
-                                        .format("m:ss")}
-                                  </span>
-                                </div>
-                              );
-                            }
-                          })()}
-
-                          <div className="admin-seekbar" />
-                          {(() => {
-                            var isAdmin = venue.host_id === userId;
-                            if (!isAdmin) {
-                              currentTime = venue.time_progress;
-                              totalTime = venue.total_time;
-                            }
-                            var curTime = Math.min(totalTime, currentTime);
-
-                            return (
-                              <Draggable
-                                position={
-                                  isScrubbingTrack
-                                    ? null
-                                    : {
-                                        x:
-                                          (curTime /
-                                            (totalTime === 0 ? 1 : totalTime)) *
-                                          (seekBarRef.current == null
-                                            ? 0
-                                            : seekBarRef.current.offsetWidth -
-                                              10),
-                                        y: 0
-                                      }
-                                }
-                                bounds=".admin-progress-seek-container"
-                                axis="x"
-                                handle=".handle"
-                                onStart={adminProgressBarStart}
-                                onDrag={adminProgessBarDrag}
-                                onStop={adminProgressBarStop}
-                              >
-                                <div
-                                  className={
-                                    "admin-scrubber-circle " +
-                                    (isAdmin
-                                      ? "handle"
-                                      : "scrubber-slow-transition") +
-                                    (isScrubbingTrack
-                                      ? " admin-scrubber-circle-selected"
-                                      : "")
-                                  }
-                                />
-                              </Draggable>
-                            );
-                          })()}
-                        </div>
+                        <FontAwesomeIcon
+                          className={
+                            "upvote-button" +
+                            (upvoteExists ? " upvote-selected" : "")
+                          }
+                          icon={faThumbsUp}
+                          onClick={() =>
+                            upvoteExists
+                              ? onTrackDeleteVote(trackId)
+                              : onTrackUpvote(trackId)
+                          }
+                        />
                       </div>
                     </div>
-                  );
-                }
-              })()}
-            </div>
-
-            <div className="playlist-header">
-              <h2 className="playlist-title">Playlist</h2>
-            </div>
-
-            <div className="playlist-container">
-              <div className="playlist-propose">
-                <button
-                  className="astext playlist-propose-button"
-                  onClick={() => onProposeOpen()}
-                >
-                  Propose song
-                </button>
-              </div>
-
-              <ul className="playlist">
-                {venue.playlist.map((track, index) => {
-                  var ordinal = index + 1;
-                  var trackId = track.track_id;
-                  var trackInfo = venueTrackInfo[trackId];
-
-                  var userVote = track.votes.find(
-                    vote => vote.user_id === userId
-                  );
-                  var upvoteExists = userVote != null && userVote.upvote;
-                  var downvoteExists = userVote != null && !userVote.upvote;
-
-                  if (trackInfo != null) {
-                    var score = track.votes
-                      .map(vote => {
-                        return vote.upvote ? 1 : -1;
-                      })
-                      .reduce((a, b) => a + b, 0);
-                    return (
-                      <li className="track-listing" key={track.track_id}>
-                        <div className="track">
-                          <div className="track-place">#{ordinal}</div>
-                          <div className="album-art">
-                            <img
-                              alt=""
-                              src={
-                                "https://api.napster.com/imageserver/v2/albums/" +
-                                trackInfo.albumId +
-                                "/images/170x170.jpg"
-                              }
-                            />
-                          </div>
-
-                          <div className="track-info">
-                            <div className="name">{trackInfo.name}</div>
-                            <div className="artist">
-                              <span className="bold artist-name">
-                                {trackInfo.artistName}
-                              </span>
-                              <span className="album-name">
-                                {" "}
-                                - {trackInfo.albumName}
-                              </span>
-                            </div>
-                            <div className="duration">
-                              {trackInfo.playbackSeconds === 0
-                                ? "?:??"
-                                : moment
-                                    .utc(trackInfo.playbackSeconds * 1000)
-                                    .format("mm:ss")}
-                            </div>
-
-                            <div className="vote-buttons">
-                              <FontAwesomeIcon
-                                className={
-                                  "downvote-button" +
-                                  (downvoteExists ? " downvote-selected" : "")
-                                }
-                                icon={faThumbsDown}
-                                onClick={() =>
-                                  downvoteExists
-                                    ? onTrackDeleteVote(trackId)
-                                    : onTrackDownvote(trackId)
-                                }
-                              />
-                              <div className="vote-score">{score}</div>
-
-                              <FontAwesomeIcon
-                                className={
-                                  "upvote-button" +
-                                  (upvoteExists ? " upvote-selected" : "")
-                                }
-                                icon={faThumbsUp}
-                                onClick={() =>
-                                  upvoteExists
-                                    ? onTrackDeleteVote(trackId)
-                                    : onTrackUpvote(trackId)
-                                }
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  } else {
-                    console.log("Invalid track");
-                    console.log(track);
-                    return null;
-                  }
-                })}
-              </ul>
-            </div>
-          </div>
-        );
+                  </div>
+                </li>
+              );
+            } else {
+              console.log("Invalid track");
+              console.log(track);
+              return null;
+            }
+          })}
+        </ul>
+      </div>
+      </div>
+          );
       })()}
+
     </div>
   );
 }
@@ -933,7 +928,9 @@ class App extends Component {
     var venueRefreshToken = uuid.v4();
     this.setState({
       fetchingNextTrack: true,
-      venueRefreshToken: venueRefreshToken
+      venueRefreshToken: venueRefreshToken,
+      currentTime: 0,
+      totalTime: 0
     });
     console.log("Getting next track");
 
@@ -998,7 +995,7 @@ class App extends Component {
             closeInProgress: false,
             askVenueClose: false,
             closeError: null
-          });
+          });          
         });
       })
       .catch(error => {
@@ -1157,10 +1154,7 @@ class App extends Component {
               : this.state.fetchingNextTrack,
             awaitingNextTrack: trackAwaiting
               ? false
-              : this.state.awaitingNextTrack,
-            currentTime: trackAwaiting ? 0 : this.state.currentTime,  
-            totalTime: trackAwaiting ? 0 : this.state.totalTime,  
-
+              : this.state.awaitingNextTrack
           });
         });
     });
@@ -1480,63 +1474,14 @@ class App extends Component {
             shouldReturnFocusAfterClose={false}
           >
             <h2 className="center-text">Statistics</h2>
-
+            
             <div>
-              <div>
-                <span className="stat-label">
-                  Venue duration:{" "}
-                  <span className="stat-value">
-                    {venue == null || venue.closed_on == null
-                      ? ""
-                      : moment
-                          .utc(
-                            moment(venue.closed_on).valueOf() -
-                              moment(venue.created_on).valueOf()
-                          )
-                          .format("mm:ss")}
-                  </span>
-                </span>
-              </div>
-              <div>
-                <span className="stat-label">
-                  Tracks played:{" "}
-                  <span className="stat-value">
-                    {venue == null ? "" : venue.stats.total_tracks_played}
-                  </span>
-                </span>
-              </div>
-              <div>
-                <span className="stat-label">
-                  Tracks skipped:{" "}
-                  <span className="stat-value">
-                    {venue == null ? "" : venue.stats.total_tracks_skipped}
-                  </span>
-                </span>
-              </div>
-              <div>
-                <span className="stat-label">
-                  Tracks proposed:{" "}
-                  <span className="stat-value">
-                    {venue == null ? "" : venue.stats.total_tracks_proposed}
-                  </span>
-                </span>
-              </div>
-              <div>
-                <span className="stat-label">
-                  Total upvotes:{" "}
-                  <span className="stat-value">
-                    {venue == null ? "" : venue.stats.total_track_upvotes}
-                  </span>
-                </span>
-              </div>
-              <div>
-                <span className="stat-label">
-                  Total downvotes:{" "}
-                  <span className="stat-value">
-                    {venue == null ? "" : venue.stats.total_track_downvotes}
-                  </span>
-                </span>
-              </div>
+            <div><span className="stat-label">Venue duration: <span className="stat-value">{(venue == null || venue.closed_on == null) ? "" : moment.utc(moment(venue.closed_on).valueOf() - moment(venue.created_on).valueOf()).format("mm:ss")}</span></span></div>
+            <div><span className="stat-label">Tracks played: <span className="stat-value">{venue == null ? "" : venue.stats.total_tracks_played}</span></span></div>
+            <div><span className="stat-label">Tracks skipped: <span className="stat-value">{venue == null ? "" : venue.stats.total_tracks_skipped}</span></span></div>
+            <div><span className="stat-label">Tracks proposed: <span className="stat-value">{venue == null ? "" : venue.stats.total_tracks_proposed}</span></span></div>
+            <div><span className="stat-label">Total upvotes: <span className="stat-value">{venue == null ? "" : venue.stats.total_track_upvotes}</span></span></div>
+            <div><span className="stat-label">Total downvotes: <span className="stat-value">{venue == null ? "" : venue.stats.total_track_downvotes}</span></span></div>
             </div>
           </Modal>
 
