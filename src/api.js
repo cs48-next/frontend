@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const HOST = `https://api.song.buzz`;
+const HOST = `http://localhost:8080`;//https://api.song.buzz`;
 const NAPSTER_HOST = `https://api.napster.com`;
 
 const NAPSTER_API_KEY = "ZDFhMjNjNWItZjA4OC00NjJhLWFlYWQtYzE2MmUyZDUxOTBi";

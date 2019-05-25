@@ -928,9 +928,7 @@ class App extends Component {
     var venueRefreshToken = uuid.v4();
     this.setState({
       fetchingNextTrack: true,
-      venueRefreshToken: venueRefreshToken,
-      currentTime: 0,
-      totalTime: 0
+      venueRefreshToken: venueRefreshToken
     });
     console.log("Getting next track");
 
@@ -1147,15 +1145,19 @@ class App extends Component {
           }
         })
         .then(() => {
+          var currentlyAwaiting = this.state.awaitingNextTrack;
           this.setState({
             venueRefreshInProgress: false,
-            fetchingNextTrack: trackAwaiting
+            fetchingNextTrack: (trackAwaiting && currentlyAwaiting)
               ? false
               : this.state.fetchingNextTrack,
-            awaitingNextTrack: trackAwaiting
+            awaitingNextTrack: (trackAwaiting && currentlyAwaiting)
               ? false
               : this.state.awaitingNextTrack
           });
+          if ((trackAwaiting && currentlyAwaiting)) {
+            this.updateCurrentTime(0, 0);
+          }
         });
     });
   }
@@ -1268,7 +1270,7 @@ class App extends Component {
         totalTime: totalTime
       });
       updateVenueCurrentTime(this.state.venue.id, currentTime, totalTime).then(
-        venue => {}
+        _ignore => {}
       );
     }
   }
