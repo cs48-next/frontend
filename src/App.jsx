@@ -1,6 +1,6 @@
 import React, { Component, useEffect } from "react";
 import Modal from "react-modal";
-import * as moment from "moment";
+import moment from "moment";
 import Cookies from "universal-cookie";
 import uuid from "uuid";
 
@@ -205,7 +205,7 @@ function VenueInfo({
   }, [updateCurrentTime, onSeekDone]);
 
   useEffect(() => {
-    if (venue.host_id === userId) {
+    if (venue.host_id === userId && Napster != null) {
       var setupPlayer = () => {
 
           if (venue.closed_on != null) {
@@ -1619,3 +1619,4 @@ export default geolocated({
   watchPosition: true,
   userDecisionTimeout: null
 })(App);
+export { VenueGrid, VenueInfo};

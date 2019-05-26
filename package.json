@@ -7,9 +7,11 @@
     "@fortawesome/free-regular-svg-icons": "^5.8.1",
     "@fortawesome/free-solid-svg-icons": "^5.8.2",
     "@fortawesome/react-fontawesome": "^0.1.4",
+    "async-wait-until": "^1.2.4",
     "axios": "^0.17.1",
     "express": "^4.16.4",
     "i": "^0.3.6",
+    "jest-dom": "^3.4.0",
     "moment": "2.24.0",
     "query-string": "^5.1.0",
     "react": "^16.8.6",
@@ -19,6 +21,7 @@
     "react-geolocated": "2.4.1",
     "react-modal": "3.8.1",
     "react-scripts": "3.0.0",
+    "react-testing-library": "^7.0.1",
     "universal-cookie": "3.1.0"
   },
   "scripts": {
