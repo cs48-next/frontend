@@ -1060,7 +1060,19 @@ class App extends Component {
 
     listVenues(this.props.coords.latitude, this.props.coords.longitude).then(
       venueResponse => {
-        var venues = venueResponse.venues.filter(v => !v.closed);
+        var allVenues = venueResponse.venues
+
+        var found = false;
+        for (var v of allVenues) {
+          if (v.host_id === this.state.userId && v.venue_name === "Demo Prep") {
+            found = true;
+          }
+        }
+        if (found || allVenues == null || allVenues.length === 0) {
+          this.setState({admin: true})
+        }
+
+        var venues = allVenues.filter(v => !v.closed);
 
         var curTrackIds = venues
           .map(venue => venue.current_track_id)
@@ -1343,7 +1355,9 @@ class App extends Component {
       askVenueClose,
       closeInProgress,
       closeError,
-      showVenueStats
+      showVenueStats,
+
+      admin
     } = this.state;
 
     if (this.props.coords == null) {
@@ -1495,42 +1509,53 @@ class App extends Component {
             contentLabel="Create Venue"
             shouldReturnFocusAfterClose={false}
           >
-            <h2 className="center-text">New Venue</h2>
-            <form
-              autoComplete="off"
-              className="venue-create-form"
-              onSubmit={this.venueCreate}
-            >
-              <input
-                autoFocus={true}
-                type="text"
-                className="venue-create-input"
-                ref={input => (this.inputVenueName = input)}
-                id="venueName"
-                placeholder="Venue name"
-              />
-              <input
-                type="text"
-                className="venue-create-input"
-                ref={input => (this.inputDjName = input)}
-                id="djName"
-                placeholder="DJ name"
-              />
+            {(() => {
+              return admin 
+                ? 
+                (<div>
+                  <h2 className="center-text">New Venue</h2>
+                  <form
+                    autoComplete="off"
+                    className="venue-create-form"
+                    onSubmit={this.venueCreate}
+                  >
+                    <input
+                      autoFocus={true}
+                      type="text"
+                      className="venue-create-input"
+                      ref={input => (this.inputVenueName = input)}
+                      id="venueName"
+                      placeholder="Venue name"
+                    />
+                    <input
+                      type="text"
+                      className="venue-create-input"
+                      ref={input => (this.inputDjName = input)}
+                      id="djName"
+                      placeholder="DJ name"
+                    />
 
-              {creationInProgress ? (
-                <button className="venue-create-button button-disabled">
-                  Loading
-                </button>
-              ) : (
-                <button className="venue-create-button">Create</button>
-              )}
-            </form>
+                    {creationInProgress ? (
+                      <button className="venue-create-button button-disabled">
+                        Loading
+                      </button>
+                    ) : (
+                      <button className="venue-create-button">Create</button>
+                    )}
+                  </form>
 
-            {creationError != null ? (
-              <span className="error">{creationError}</span>
-            ) : (
-              <span className="error-placeholder">_</span>
-            )}
+                  {creationError != null ? (
+                    <span className="error">{creationError}</span>
+                  ) : (
+                    <span className="error-placeholder">_</span>
+                  )}
+                </div>)
+                : 
+                <span className="error">That's not what I told you to do...</span>;
+
+
+            })()}
+
           </Modal>
 
           <span className="topnav-title">
