@@ -1062,13 +1062,13 @@ class App extends Component {
       venueResponse => {
         var allVenues = venueResponse.venues
 
-        var found = false;
+        var ownsDemo = false;
         for (var v of allVenues) {
-          if (v.host_id === this.state.userId && v.venue_name === "Demo Prep") {
-            found = true;
+          if (v.venue_name === "Demo Setup") {
+            ownsDemo = v.host_id === this.state.userId;
           }
         }
-        if (found || allVenues == null || allVenues.length === 0) {
+        if (ownsDemo || allVenues == null || allVenues.length === 0) {
           this.setState({admin: true})
         }
 
