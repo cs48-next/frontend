@@ -1070,6 +1070,8 @@ class App extends Component {
         }
         if (ownsDemo || allVenues == null || allVenues.length === 0) {
           this.setState({admin: true})
+        } else {
+          this.setState({admin: false})
         }
 
         var venues = allVenues.filter(v => !v.closed);
