@@ -10,7 +10,7 @@
     "async-wait-until": "^1.2.4",
     "axios": "^0.17.1",
     "express": "^4.16.4",
-    "i": "^0.3.6",
+    "i": "^0.3.7",
     "jest-dom": "^3.4.0",
     "moment": "2.24.0",
     "query-string": "^5.1.0",
